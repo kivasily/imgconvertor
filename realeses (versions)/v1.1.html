@@ -1,0 +1,1371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+    <title>IMG Converter - 100% Serverless</title>
+    <!-- JSZip for zipping multiple files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --bg-color: #f4f6f9;
+            --container-bg: #ffffff;
+            --text-color: #333333;
+            --accent-color: #4a90e2;
+            --accent-hover: #357abd;
+            --border-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --nav-bg: #ffffff;
+            --card-bg: #f8f9fa;
+            --radius: 16px;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        [data-theme="dark"] {
+            /* Dark Theme Variables */
+            --bg-color: #0f172a;
+            --container-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --border-color: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --nav-bg: #1e293b;
+            --card-bg: #334155;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        [data-theme="strange"] {
+            /* Strange Theme (Cyberpunk / Synthwave) */
+            --bg-color: #120124;
+            --container-bg: #22003b;
+            --text-color: #00ffcc;
+            --accent-color: #ff007f;
+            --accent-hover: #e6006f;
+            --border-color: #ff007f;
+            --shadow-color: rgba(255, 0, 127, 0.4);
+            --nav-bg: #1a002c;
+            --card-bg: #3d0066;
+            --font-family: 'Courier New', Courier, monospace;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        /* Nav Bar Styling */
+        nav {
+            background-color: var(--nav-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-color);
+            text-decoration: none;
+            letter-spacing: 0.5px;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .nav-item {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .nav-item:hover, .nav-item.active {
+            background-color: var(--card-bg);
+            color: var(--accent-color);
+            transform: scale(1.05);
+        }/* Made by @Kivasily (GitHub, Youtube, Discord) */
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }/* Made by @Kivasily (GitHub, Youtube, Discord) */
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        /* Language Switcher */
+        .lang-select {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            outline: none;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        /* Main Content Container */
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 0 20px;
+            flex: 1;
+        }/* Made by @Kivasily (GitHub, Youtube, Discord) */
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Converter Layout */
+        .converter-card {
+            background-color: var(--container-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 10px 25px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+        }
+
+        .format-selectors {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 20px;
+        }
+
+        .select-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }/* Made by @Kivasily (GitHub, Youtube, Discord) */
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .select-box label {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .custom-select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            font-size: 16px;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .custom-select:focus {
+            border-color: var(--accent-color);
+        }/* Made by @Kivasily (GitHub, Youtube, Discord) */
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .arrow-divider {
+            font-size: 24px;
+            color: var(--accent-color);
+            margin-top: 22px;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        /* Dropzone Box */
+        .dropzone {
+            border: 3px dashed var(--border-color);
+            border-radius: var(--radius);
+            padding: 50px 30px;
+            text-align: center;
+            background-color: var(--card-bg);
+            cursor: pointer;
+            position: relative;
+            transition: border-color 0.3s, background-color 0.3s;
+            margin-bottom: 25px;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent-color);
+            background-color: var(--shadow-color);
+        }/* Made by @Kivasily (GitHub, Youtube, Discord) */
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .dropzone svg {/* Made by @Kivasily (GitHub, Youtube, Discord) */
+            width: 60px;
+            /* Made by @Kivasily (GitHub, Youtube, Discord) */height: 60px;
+            fill: var(--accent-color);
+            margin-bottom: 15px;
+        }
+
+        .dropzone p {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .btn-upload {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;/* Made by @Kivasily (GitHub, Youtube, Discord) */
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .btn-upload:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* File List Area */
+        .file-list-container {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px;
+            background-color: var(--card-bg);
+            display: none;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .file-size {
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        .file-status {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        /* Action Buttons */
+        .action-area {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-action {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            width: 100%;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .btn-action:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-action:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Settings View */
+        .settings-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--container-bg);
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
+
+        .setting-details h3 {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .setting-details p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .theme-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-theme {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            font-weight: 600;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .btn-theme.active {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        /* Switch checkbox */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Info Tab Styling */
+        .info-card {
+            background-color: var(--container-bg);
+            padding: 40px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px var(--shadow-color);
+            line-height: 1.6;
+        }
+
+        .info-card h2 {
+            color: var(--accent-color);
+            margin-bottom: 20px;
+        }
+
+        .info-card p {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .author-tag {
+            margin-top: 30px;
+            font-weight: bold;
+            font-size: 15px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 20px;
+            opacity: 0.9;
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        .modal {
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            max-width: 500px;
+            width: 100%;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: modalSlide 0.3s ease;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        @keyframes modalSlide {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal h2 {
+            color: #ef4444;
+            margin-bottom: 15px;
+        }
+
+        .modal p {
+            margin-bottom: 25px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn-modal-cancel {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-modal-confirm {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+/* Made by @Kivasily (GitHub, Youtube, Discord) */
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }/* Made by @Kivasily (GitHub, Youtube, Discord) */
+    </style>
+</head>
+<body data-theme="dark">
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+    <!-- Top Navigation Bar -->
+    <nav>
+        <a href="#" class="logo" id="logoText">IMG Converter</a>
+        <div class="nav-right">
+            <div class="nav-links">
+                <!-- Home Icon -->
+                <button class="nav-item active" data-tab="home" id="btnTabHome" title="Home">
+                    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                </button>
+                <!-- Info Icon -->
+                <button class="nav-item" data-tab="info" id="btnTabInfo" title="Info">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                </button>
+                <!-- Settings/More Icon -->
+                <button class="nav-item" data-tab="settings" id="btnTabSettings" title="Settings">
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                </button>
+            </div>
+            
+            <!-- Language Selector -->
+            <select class="lang-select" id="langSelector">
+                <option value="en">EN</option>
+                <option value="es">SP</option>
+                <option value="fr">FR</option>
+                <option value="ru">RU</option>
+                <option value="ja">JP</option>
+                <option value="it">IT</option>
+                <option value="de">DE</option>
+                <option value="kk">KZ</option>
+                <option value="uz">UZ</option>
+                <option value="uk">UA</option>
+                <option value="be">BY</option>
+                <option value="hi">IN</option>
+            </select>
+        </div>
+    </nav>
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+    <!-- Main Container Layout -->
+    <div class="container">
+        
+        <!-- Tab 1: Home View -->
+        <div id="home" class="tab-content active">
+            <div class="converter-card">
+                <div class="format-selectors">
+                    <div class="select-box">
+                        <label id="lblConvertFrom">From Format</label>
+                        <select class="custom-select" id="srcFormat">
+                            <option value="auto">🔥 Auto-Detect All</option>
+                        </select>
+                    </div>
+                    <div class="arrow-divider">➔</div>
+                    <div class="select-box">
+                        <label id="lblConvertTo">To Target Format</label>
+                        <select class="custom-select" id="targetFormat">
+                            <option value="PNG">.PNG</option>
+                            <option value="JPG">.JPG</option>
+                            <option value="JPEG">.JPEG</option>
+                            <option value="WEBP" selected>.WEBP</option>
+                            <option value="SVG">.SVG</option>
+                            <option value="AVIF">.AVIF</option>
+                            <option value="HEIC">.HEIC</option>
+                        </select>    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+                    </div>
+                </div>    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+
+                <!-- Dropzone Box -->
+                <div class="dropzone" id="dropArea">
+                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                    <p id="txtDropInstructions">Drag & drop your images here or click to browse</p>
+                    <button class="btn-upload" id="btnBrowse" type="button">Choose Files</button>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                </div>
+
+                <!-- File Items Log Container -->
+                <div class="file-list-container" id="fileListArea"></div>
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+                <!-- Convert Call-to-action Action -->
+                <div class="action-area">
+                    <button class="btn-action" id="btnConvert" disabled>Convert Now</button>
+                </div>
+            </div>
+        </div>
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+        <!-- Tab 2: About Project Info View -->
+        <div id="info" class="tab-content">
+            <div class="info-card">
+                <h2 id="infoTitle">About IMG Converter</h2>
+                <p id="infoP1">This web application is a highly modern, fully functional client-side photo converter tool. It operates entirely without backend servers, ensuring your uploaded pictures are processed purely within your device memory infrastructure.</p>
+                <p id="infoP2">Your files are never transmitted across server networks, ensuring total privacy compliance, maximum protection parameters, and extreme speed efficiency natively optimized by browser rendering technologies.</p>
+                <div class="author-tag" id="infoAuthors">Authors: Vasily & Gemini</div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Configuration Settings View -->
+        <div id="settings" class="tab-content">
+            <div class="settings-grid">
+                <!-- Theme Row Layout -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setThemeTitle">Interface Style Theme</h3>
+                        <p id="setThemeDesc">Modify the aesthetic design profile presentation of the client application environment.</p>
+                    </div>
+                    <div class="theme-buttons">
+                        <button class="btn-theme" data-theme="light" id="thLight">Light</button>
+                        <button class="btn-theme active" data-theme="dark" id="thDark">Dark</button>
+                        <button class="btn-theme" data-theme="strange" id="thStrange">Strange</button>
+                    </div>
+                </div>
+
+                <!-- Bypass Row Limit Adjustments -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setLimitTitle">Upload Capacity Constraint Limit</h3>
+                        <p id="setLimitDesc">Toggle restriction ceiling safety filters beyond the standard baseline threshold of 80 images simultaneously.</p>
+                    </div>
+                    <button class="btn-danger" id="btnRemoveLimit">Remove File Limit</button>
+                </div>
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+                <!-- Bypass Processing Matching Extensions Switch -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setForceTitle">Force Identical Extension Re-Conversion</h3>
+                        <p id="setForceDesc">Force conversion algorithms to execute even when target matches input original format instead of original byte-pass stream routing.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chkForceConvert">    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+                        <span class="slider"></span>
+                    </label>
+                </div>    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+            </div>
+        </div>
+    </div>
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+    <!-- Alert Warning Confirmation Modal Overlay Box -->
+    <div class="modal-overlay" id="warningModal">
+        <div class="modal">
+            <h2 id="modalTitle">Critical Capacity System Warning!</h2>
+            <p id="modalBody">Disabling total layout array capacity caps could severely trigger client system visual lag, thread memory drops, or immediate out-of-memory browser tab process crashes due to intensive hardware RAM requirements. Proceed under absolute caution.</p>
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="btnModalCancel">Cancel</button>
+                <button class="btn-modal-confirm" id="btnModalConfirm">Disable Limit</button>
+            </div>
+        </div>    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+    </div>
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+    <!-- Core App Application Logic Flow Script -->
+    <script>
+        // Multilingual Localization Strings Matrix Dictionary Array Block Mapping
+        const dictionary = {
+            en: {
+                logo: "IMG Converter",
+                from: "From Format",
+                to: "To Target Format",
+                drop: "Drag & drop your images here or click to browse",
+                browse: "Choose Files",
+                convert: "Convert Now",
+                infoTitle: "About IMG Converter",
+                infoP1: "This web application is a highly modern, fully functional client-side photo converter tool. It operates entirely without backend servers, ensuring your uploaded pictures are processed purely within your device memory infrastructure.",
+                infoP2: "Your files are never transmitted across server networks, ensuring total privacy compliance, maximum protection parameters, and extreme speed efficiency natively optimized by browser rendering technologies.",
+                authors: "Authors: @Kivasily (GitHub, Youtube, Discord)",
+                setThemeTitle: "Interface Style Theme",
+                setThemeDesc: "Modify the aesthetic design profile presentation of the client application environment.",
+                setLimitTitle: "Upload Capacity Constraint Limit",
+                setLimitDesc: "Toggle restriction ceiling safety filters beyond the standard baseline threshold of 80 images simultaneously.",
+                btnRemoveLimit: "Remove File Limit",
+                setForceTitle: "Force Identical Extension Re-Conversion",
+                setForceDesc: "Force conversion algorithms to execute even when target matches input original format instead of original byte-pass stream routing.",
+                modalTitle: "Critical Capacity System Warning!",
+                modalBody: "Disabling total layout array capacity caps could severely trigger client system visual lag, thread memory drops, or immediate out-of-memory browser tab process crashes due to intensive hardware RAM requirements. Proceed under absolute caution.",
+                modalCancel: "Cancel",
+                modalConfirm: "Disable Limit",
+                limitRemoved: "File threshold ceiling disabled. Process carefully!",
+                maxLimitErr: "Maximum 80 files allowed simultaneously!",
+                noFiles: "Please upload image files first!",
+                processing: "Processing images... Please wait.",
+                done: "Conversion successful! Triggering download assets.",
+                ready: "Ready to convert",
+                thLight: "Light", thDark: "Dark", thStrange: "Strange"
+            },
+            es: {
+                logo: "IMG Converter",
+                from: "Formato de origen",
+                to: "Formato de destino",
+                drop: "Arrastre y suelte sus imágenes aquí o haga clic para buscar",
+                browse: "Seleccionar archivos",
+                convert: "Convertir ahora",
+                infoTitle: "Acerca de IMG Converter",
+                infoP1: "Esta aplicación web es una herramienta de conversión de fotos del lado del cliente altamente moderna y funcional. Funciona completamente sin servidores externos.",
+                infoP2: "Sus archivos nunca se transmiten, lo que garantiza la privacidad total y la máxima velocidad optimizada por el navegador.",
+                authors: "Autores: Vasily & Gemini",
+                setThemeTitle: "Tema de estilo de interfaz",
+                setThemeDesc: "Modifique la presentación del diseño estético del entorno de la aplicación.",
+                setLimitTitle: "Límite de capacidad de carga",
+                setLimitDesc: "Desactive los filtros de seguridad de restricción más allá del umbral estándar de 80 imágenes.",
+                btnRemoveLimit: "Eliminar límite",
+                setForceTitle: "Forzar reconversión de extensión idéntica",
+                setForceDesc: "Fuerza la ejecución de algoritmos de conversión incluso cuando el destino coincide con el formato original.",
+                modalTitle: "¡Advertencia crítica del sistema!",
+                modalBody: "Deshabilitar los límites de capacidad podría causar retrasos visuales, caídas de memoria o bloqueos inmediatos de la pestaña del navegador debido a los requisitos de RAM.",
+                modalCancel: "Cancelar",
+                modalConfirm: "Desactivar límite",
+                limitRemoved: "Límite de archivos desactivado. ¡Proceda con cuidado!",
+                maxLimitErr: "¡Se permite un máximo de 80 archivos simultáneamente!",
+                noFiles: "¡Por favor, cargue archivos de imagen primero!",
+                processing: "Procesando imágenes... Por favor espere.",
+                done: "¡Conversión exitosa! Descargando archivos.",
+                ready: "Listo para convertir",
+                thLight: "Claro", thDark: "Oscuro", thStrange: "Extraño"
+            },// Made by @Kivasily (GitHub, Youtube, Discord)
+            fr: {
+                logo: "IMG Converter",
+                from: "Format d'origine",
+                to: "Format cible",
+                drop: "Glissez-déposez vos images ici ou cliquez pour parcourir",
+                browse: "Choisir des fichiers",
+                convert: "Convertir maintenant",
+                infoTitle: "À propos d'IMG Converter",
+                infoP1: "Cette application web est un outil de conversion de photos moderne et fonctionnel côté client, fonctionnant entièrement sans serveur.",
+                infoP2: "Vos fichiers ne sont jamais transmis, garantissant une confidentialité totale et une rapidité maximale optimisée par le navigateur.",
+                authors: "Auteurs: Vasily & Gemini",
+                setThemeTitle: "Thème de style d'interface",
+                setThemeDesc: "Modifiez la présentation visuelle de l'environnement de l'application.",
+                setLimitTitle: "Limite de capacité de téléchargement",
+                setLimitDesc: "Supprimez la restriction de sécurité au-delà du seuil standard de 80 images simultanées.",
+                btnRemoveLimit: "Supprimer la limite",
+                setForceTitle: "Forcer la reconversion de format identique",
+                setForceDesc: "Force l'exécution des algorithmes même si le format cible correspond au format d'origine.",
+                modalTitle: "Avertissement système critique !",
+                modalBody: "La désactivation des limites peut provoquer des ralentissements, des pertes de mémoire ou un plantage du navigateur en raison de la RAM requise.",
+                modalCancel: "Annuler",
+                modalConfirm: "Désactiver la limite",
+                limitRemoved: "Limite désactivée. Procédez avec prudence !",
+                maxLimitErr: "Maximum 80 fichiers autorisés simultanément !",
+                noFiles: "Veuillez d'abord charger des fichiers !",
+                processing: "Traitement en cours... Veuillez patienter.",
+                done: "Conversion réussie ! Téléchargement démarré.",
+                ready: "Prêt à convertir",
+                thLight: "Clair", thDark: "Sombre", thStrange: "Étrange"
+            },// Made by @Kivasily (GitHub, Youtube, Discord)
+            ru: {//Made by @Kivasily (GitHub, Youtube, Discord)
+                logo: "IMG Converter",
+                from: "Исходный формат",
+                to: "Целевой формат",
+                drop: "Перетащите изображения сюда или нажмите для выбора",
+                browse: "Выбрать файлы",
+                convert: "Конвертировать",
+                infoTitle: "О проекте IMG Converter",
+                infoP1: "Это веб-приложение представляет собой современный полностью клиентский инструмент для конвертации фотографий. Оно работает абсолютно без серверов, обрабатывая файлы прямо в памяти браузера.",
+                infoP2: "Ваши файлы никуда не загружаются, что гарантирует 100% конфиденциальность, защиту данных и высочайшую скорость работы за счет мощностей вашего устройства.",
+                authors: "Авторы: Vasily & Gemini",
+                setThemeTitle: "Тема оформления",
+                setThemeDesc: "Изменение внешнего вида и цветовой схемы интерфейса приложения.",
+                setLimitTitle: "Лимит на загрузку файлов",
+                setLimitDesc: "Отключение ограничений на количество одновременно загружаемых файлов (по умолчанию: 80 файлов).",
+                btnRemoveLimit: "Убрать лимит",
+                setForceTitle: "Принудительная конвертация",
+                setForceDesc: "Конвертировать файлы, даже если исходное расширение совпадает с выбранным целевым форматом.",
+                modalTitle: "Внимание! Ограничение системы",
+                modalBody: "Отключение лимита на файлы может привести к сильным зависаниям вкладки, нехватке оперативной памяти и крашу браузера при обработке больших массивов данных. Действуйте на свой страх и риск.",
+                modalCancel: "Отмена",
+                modalConfirm: "Отключить лимит",
+                limitRemoved: "Ограничение на количество файлов отключено. Будьте осторожны!",
+                maxLimitErr: "Максимум можно загрузить не более 80 файлов одновременно!",
+                noFiles: "Пожалуйста, сначала выберите или перетащите файлы для обработки!",
+                processing: "Обработка изображений... Пожалуйста, подождите.",
+                done: "Конвертация успешно завершена! Скачивание файлов.",
+                ready: "Готово к конвертации",
+                thLight: "Светлая", thDark: "Темная", thStrange: "Странная"
+            },
+            ja: {
+                logo: "IMG Converter",
+                from: "元の形式",
+                to: "変換先の形式",
+                drop: "ここに画像をドラッグ＆ドロップするか、クリックして選択してください",
+                browse: "ファイルを選択",
+                convert: "変換を開始",
+                infoTitle: "IMG Converter について",
+                infoP1: "このウェブアプリケーションは、完全にクライアントサイドで動作する高機能な画像変換ツールです。サーバーを一切使用せず、ブラウザのメモリ内で処理を行います。",
+                infoP2: "ファイルが外部に送信されることはないため、完全なプライバシーと、デバイスの性能を活かした高速処理が保証されます。",
+                authors: "著者: Vasily & Gemini",
+                setThemeTitle: "インターフェーステーマ",
+                setThemeDesc: "アプリケーションの外観とカラーテーマを変更します。",
+                setLimitTitle: "アップロードファイル数制限",
+                setLimitDesc: "一度にアップロードできる標準の制限（80枚）を解除します。",
+                btnRemoveLimit: "制限を解除する",
+                setForceTitle: "同一拡張子の強制変換",
+                setForceDesc: "変換先の形式が元の形式と同じであっても、スキップせずに強制的に再変換処理を行います。",
+                modalTitle: "システム警告！",
+                modalBody: "ファイル数の制限を解除すると、大量の画像処理時においてメモリ（RAM）を過剰に消費し、ブラウザの動作が重くなったりクラッシュしたりする恐れがあります。",
+                modalCancel: "キャンセル",
+                modalConfirm: "制限を解除",
+                limitRemoved: "ファイル数の制限が解除されました。慎重に処理してください！",
+                maxLimitErr: "同時にアップロードできるのは最大80ファイルまでです！",
+                noFiles: "最初に画像ファイルをアップロードしてください！",
+                processing: "画像を処理中... しばらくお待ちください。",
+                done: "変換が完了しました！ダウンロードを開始します。",
+                ready: "変換準備完了",
+                thLight: "ライト", thDark: "ダーク", thStrange: "ストレンジ"
+            },
+            it: {
+                logo: "IMG Converter",
+                from: "Formato di origine",
+                to: "Formato di destinazione",
+                drop: "Trascina e rilascia le immagini qui o fai clic per sfogliare",
+                browse: "Scegli file",
+                convert: "Converti ora",
+                infoTitle: "Informazioni su IMG Converter",
+                infoP1: "Questa applicazione web è uno strumento di conversione foto moderno e funzionale lato client. Funziona completamente senza server esterni.",
+                infoP2: "I tuoi file non vengono mai trasmessi, garantendo la privacy totale e la massima velocità ottimizzata dal browser.",
+                authors: "Autori: Vasily & Gemini",
+                setThemeTitle: "Tema dell'interfaccia",
+                setThemeDesc: "Modifica l'aspetto visivo e la combinazione di colori dell'applicazione.",
+                setLimitTitle: "Limite di caricamento file",
+                setLimitDesc: "Disattiva il limite di sicurezza standard impostato a 80 immagini simultanee.",
+                btnRemoveLimit: "Rimuovi limite",
+                setForceTitle: "Forza riconversione estensione identica",
+                setForceDesc: "Forza l'esecuzione degli algoritmi anche se il formato di destinazione coincide con quello originale.",
+                modalTitle: "Avviso critico di sistema!",
+                modalBody: "La disattivazione dei limiti può causare gravi rallentamenti, esaurimento della memoria RAM o crash del browser.",
+                modalCancel: "Annulla",
+                modalConfirm: "Disabilita limite",
+                limitRemoved: "Limite rimosso. Procedi con cautela!",
+                maxLimitErr: "Massimo 80 file consentiti contemporaneamente!",
+                noFiles: "Carica prima dei file d'immagine!",
+                processing: "Elaborazione in corso... Attendere prego.",
+                done: "Conversione completata! Download in corso.",
+                ready: "Pronto per la conversione",
+                thLight: "Chiaro", thDark: "Scuro", thStrange: "Strano"
+            },
+            de: {
+                logo: "IMG Converter",
+                from: "Ausgangsformat",
+                to: "Zielformat",
+                drop: "Ziehen Sie Bilder hierher oder klicken Sie, um zu suchen",
+                browse: "Dateien auswählen",
+                convert: "Jetzt konvertieren",
+                infoTitle: "Über IMG Converter",
+                infoP1: "Diese Web-App ist ein modernes, rein clientseitiges Bildkonvertierungstool, das ohne externe Server läuft.",
+                infoP2: "Ihre Dateien werden niemals übertragen. Das garantiert absolute Privatsphäre und maximale Browser-Geschwindigkeit.",
+                authors: "Autoren: Vasily & Gemini",
+                setThemeTitle: "Oberflächen-Design",
+                setThemeDesc: "Ändern Sie das visuelle Erscheinungsbild und Farbschema der Anwendung.",
+                setLimitTitle: "Upload-Dateilimit",
+                setLimitDesc: "Deaktivieren Sie die Sicherheitsbeschränkung von maximal 80 Bildern gleichzeitig.",
+                btnRemoveLimit: "Limit aufheben",
+                setForceTitle: "Identische Formate erzwungen konvertieren",
+                setForceDesc: "Erzwingt Konvertierungsalgorithmen, selbst wenn das Zielformat dem Ausgangsformat entspricht.",
+                modalTitle: "Kritische Systemwarnung!",
+                modalBody: "Das Aufheben des Limits kann bei großen Datenmengen zu Browser-Verzögerungen, RAM-Überlastung oder Abstürzen führen.",
+                modalCancel: "Abbrechen",
+                modalConfirm: "Limit deaktivieren",
+                limitRemoved: "Dateilimit aufgehoben. Vorsichtig fortfahren!",
+                maxLimitErr: "Maximal 80 Dateien gleichzeitig erlaubt!",
+                noFiles: "Bitte laden Sie zuerst Bilddateien hoch!",
+                processing: "Bilder werden verarbeitet... Bitte warten.",
+                done: "Konvertierung erfolgreich! Downloads starten.",
+                ready: "Bereit zum Konvertieren",
+                thLight: "Hell", thDark: "Dunkel", thStrange: "Seltsam"
+            },
+            kk: {//Made by @Kivasily (GitHub, Youtube, Discord)
+                logo: "IMG Converter",
+                from: "Бастапқы формат",
+                to: "Мақсатты формат",
+                drop: "Суреттерді осы жерге сүйреңіз немесе таңдау үшін басыңыз",
+                browse: "Файлдарды таңдау",
+                convert: "Конвертациялау",
+                infoTitle: "IMG Converter жобасы туралы",
+                infoP1: "Бұл веб-бағдарлама суреттерді айырбастауға арналған заманауи клиенттік құрал болып табылады. Ол серверсіз тікелей браузер жадында жұмыс істейді.",
+                infoP2: "Файлдарыңыз ешқайда жүктелмейді, бұл 100% құпиялылық пен құрылғыңыздың қуаты есебінен жоғары жылдамдықты қамтамасыз етеді.",
+                authors: "Авторлар: Vasily & Gemini",
+                setThemeTitle: "Интерфейс тақырыбы",
+                setThemeDesc: "Қосымшаның сыртқы түрі мен түс схемасын өзгерту.",
+                setLimitTitle: "Файлдарды жүктеу шектеуі",
+                setLimitDesc: "Бір уақытта жүктелетін файлдар санының шектеуін өшіру (әдепкі бойынша: 80 файл).",
+                btnRemoveLimit: "Шектеуді алып тастау",
+                setForceTitle: "Мәжбүрлі конвертациялау",
+                setForceDesc: "Бастапқы формат таңдалған форматпен сәйкес келсе де қайта өңдеу.",
+                modalTitle: "Назар аударыңыз! Жүйелік шектеу",
+                modalBody: "Шектеуді өшіру браузердің қатып қалуына, жедел жадының (RAM) толып кетуіне немесе қосымшаның жабылып қалуына әкелуі мүмкін.",
+                modalCancel: "Бас тарту",
+                modalConfirm: "Шектеуді өшіру",
+                limitRemoved: "Файл шектеуі өшірілді. Абайлаңыз!",
+                maxLimitErr: "Бір уақытта ең көбі 80 файл жүктеуге болады!",
+                noFiles: "Алдымен сурет файлдарын жүктеңіз!",
+                processing: "Суреттер өңделуде... Күте тұрыңыз.",
+                done: "Конвертация сәтті аяқталды! Файлдар жүктелуде.",
+                ready: "Конвертацияға дайын",
+                thLight: "Жарық", thDark: "Қараңғы", thStrange: "Түрлі"
+            },
+            uz: {
+                logo: "IMG Converter",
+                from: "Исходный формат",
+                to: "Maқсадли формат",
+                drop: "Rasmlarni bu yerga sudrab olib keling va tashlang yoki tanlash uchun bosing",
+                browse: "Fayllarni tanlash",
+                convert: "Konvertatsiya qilish",
+                infoTitle: "IMG Converter loyihasi haqida",
+                infoP1: "Ushbu veb-ilova rasmlarni konvertatsiya qilish uchun zamonaviy to'liq mijoz tizimidagi dasturdir. U serverlarsiz ishlaydi.",
+                infoP2: "Fayllaringiz hech qayerga yukланмайди, bu 100% maxfiylikni va qurilmangiz quvvati evaziga yuqori tezlikni ta'minlaydi.",
+                authors: "Mualliflar: Vasily & Gemini",
+                setThemeTitle: "Interfeys mavzusi",
+                setThemeDesc: "Ilovaning tashqi ko'rinishi va ranglar sxemasini o'zgartirish.",
+                setLimitTitle: "Yuklash cheklovi",
+                setLimitDesc: "Bir vaqtning o'zida yuklanadigan fayllar soni cheklovini o'chirish (standart: 80 ta fayl).",
+                btnRemoveLimit: "Cheklovni olib tashlash",
+                setForceTitle: "Majburiy konvertatsiya",
+                setForceDesc: "Formatlar bir xil бўлса ham fayllarni qayta majburiy konvertatsiya qilish.",
+                modalTitle: "Diqqat! Tizim cheklovi",
+                modalBody: "Cheklovni o'chirish katta hajmdagi ma'lumotlarni qayta ishlashda brauzer qotib qolishiga yoki operativ xotira yetishmasligiga olib kelishi mumkin.",
+                modalCancel: "Bekor qilish",
+                modalConfirm: "Cheklovni o'chirish",
+                limitRemoved: "Fayl cheklovi o'chirildi. Ehtiyot bo'ling!",
+                maxLimitErr: "Bir vaqtning o'zida ko'pi bilan 80 ta fayl ruxsat etiladi!",
+                noFiles: "Iltimos, oldin rasm fayllarini yuklang!",
+                processing: "Rasmlar qayta ishlanmoqda... Kuting.",
+                done: "Konvertatsiya muvaffaqiyatli yakunlandi! Yuklab olinmoqda.",
+                ready: "Konvertatsiyaga tayyor",
+                thLight: "Yorqin", thDark: "To'q", thStrange: "G'alati"
+            },
+            uk: {
+                logo: "IMG Converter",
+                from: "Початковий формат",
+                to: "Цільовий формат",
+                drop: "Перетягніть зображення сюди або натисніть для вибору",
+                browse: "Вибрати файли",
+                convert: "Конвертувати",
+                infoTitle: "Про проект IMG Converter",
+                infoP1: "Цей веб-додаток є сучасним повністю клієнтським інструментом для конвертації фотографій. Він працює абсолютно без серверів.",
+                infoP2: "Ваші файли нікуди не завантажуються, що гарантує 100% конфіденційність та найвищу швидкість обробки на вашому пристрої.",
+                authors: "Автори: Vasily & Gemini",
+                setThemeTitle: "Тема оформлення",
+                setThemeDesc: "Зміна зовнішнього вигляду та кольорової схеми інтерфейсу додатка.",
+                setLimitTitle: "Ліміт завантаження файлів",
+                setLimitDesc: "Вимкнення обмежень на кількість одночасно завантажуваних файлів (за замовчуванням: 80 файлів).",
+                btnRemoveLimit: "Прибрати ліміт",
+                setForceTitle: "Примусова конвертація",
+                setForceDesc: "Конвертувати файли, навіть якщо початкове розширення збігається з вибраним цільовим форматом.",
+                modalTitle: "Увага! Обмеження системи",
+                modalBody: "Вимкнення ліміту на файли може призвести до значного зависання вкладки, нестачі оперативної пам'яті та крашу браузера.",
+                modalCancel: "Скасувати",
+                modalConfirm: "Вимкнути ліміт",
+                limitRemoved: "Обмеження кількості файлів вимкнено. Будьте обережні!",
+                maxLimitErr: "Максимум можна завантажити не більше 80 файлів одночасно!",
+                noFiles: "Будь ласка, спочатку завантажте файли зображень!",
+                processing: "Обробка зображень... Будь ласка, зачекайте.",
+                done: "Конвертація завершена! Завантаження файлів.",
+                ready: "Готово до конвертації",
+                thLight: "Світла", thDark: "Темна", thStrange: "Дивна"
+            },
+            be: {
+                logo: "IMG Converter",
+                from: "Зыходны фармат",
+                to: "Цілявы фармат",
+                drop: "Перацягніце выявы сюды або націсніце для выбару",
+                browse: "Выбраць файлы",
+                convert: "Канвертаваць",
+                infoTitle: "Пра праект IMG Converter",
+                infoP1: "Гэты вэб-дадатак з'яўляецца сучасным цалкам кліенцкім інструментам для канвертацыі фатаграфій. Ён працуе абсалютна без сервераў.",
+                infoP2: "Вашы файлы нікуды не загружаюцца, што гарантує 100% канфідэнцыйнасць і найвышэйшую хуткасць працы вашага браўзера.",
+                authors: "Аўтары: Vasily & Gemini",
+                setThemeTitle: "Тэма афармлення",
+                setThemeDesc: "Змена вонкавага выгляду і каляровай схемы інтэрфейсу дадатку.",
+                setLimitTitle: "Ліміт на загрузку файлаў",
+                setLimitDesc: "Адключэнне абмежаванняў на колькасць адначасова загружаных файлаў (па змаўчанні: 80 файлаў).",
+                btnRemoveLimit: "Прыбраць ліміт",
+                setForceTitle: "Прымусовая канвертацыя",
+                setForceDesc: "Канвертаваць файлы, нават калі зыходнае пашырэнне супадае з абраным цілявым фарматам.",
+                modalTitle: "Увага! Абмежаванне сістэмы",
+                modalBody: "Адключэнне ліміту на файлы можа прывесці к завісанням укладкі, нястачы аператыўнай памяці і крашу браўзера.",
+                modalCancel: "Адмена",
+                modalConfirm: "Адключыць ліміт",
+                limitRemoved: "Абмежаванне колькасці файлаў адключана. Будзьце асцярожныя!",
+                maxLimitErr: "Максімум можна загрузіць не больш за 80 файлаў адначасова!",
+                noFiles: "Калі ласка, спачатку загрузіце файлы выяў!",
+                processing: "Апрацоўка выяў... Калі ласка, пачакайце.",
+                done: "Канвертацыя завершана! Спампоўванне файлаў.",
+                ready: "Гатова да канвертацыі",
+                thLight: "Светлая", thDark: "Цёмная", thStrange: "Дзіўная"
+            },
+            hi: {
+                logo: "IMG Converter",
+                from: "मूल फ़ॉर्मेट",
+                to: "लक्ष्य फ़ॉर्मेट",
+                drop: "अपनी छवियों को यहाँ खींचें और छोड़ें या ब्राउज़ करने के लिए क्लिक करें",
+                browse: "फ़ाइलें चुनें",
+                convert: "अभी बदलें",
+                infoTitle: "IMG Converter के बारे में",
+                infoP1: "यह वेब एप्लिकेशन पूरी तरह से क्लाइंट-साइड फोटो कनवर्टर टूल है। यह बिना किसी बाहरी सर्वर के काम करता है।",
+                infoP2: "आपकी फ़ाइलें कभी भी सर्वर पर स्थानांतरित नहीं होती हैं, जिससे ब्राउज़र द्वारा अधिकतम गोपनीयता सुनिश्चित होती है।",
+                authors: "लेखक: Vasily & Gemini",
+                setThemeTitle: "इंटरफ़ेस थीम शैली",
+                setThemeDesc: "एप्लिकेशन परिवेश की दृश्य शैली प्रस्तुति को संशोधित करें।",
+                setLimitTitle: "अपलोड फ़ाइल सीमा क्षमता",
+                setLimitDesc: "एक साथ 80 छवियों की मानक सुरक्षा सीमा प्रतिबंध फ़िल्टर को अक्षम करें।",
+                btnRemoveLimit: "फ़ाइल सीमा हटाएँ",
+                setForceTitle: "समान एक्सटेंशन पुनः रूपांतरण लागू करें",
+                setForceDesc: "रूपांतरण एल्गोरिदम निष्पादित करने के लिए बाध्य करें भले ही लक्ष्य मूल फ़ॉर्मेट से मेल खाता हो।",
+                modalTitle: "क्रिटिकल सिस्टम चेतावनी!",
+                modalBody: "फ़ाइल सीमाओं को अक्षम करने से अत्यधिक रैम आवश्यकताओं के कारण ब्राउज़र टैब क्रैश हो सकता है या गंभीर रूप से लैग हो सकता है।",
+                modalCancel: "रद्द करें",
+                modalConfirm: "सीमा अक्षम करें",
+                limitRemoved: "फ़ाइल सीमा हटा दी गई है। सावधानी से प्रक्रिया करें!",
+                maxLimitErr: "एक साथ अधिकतम 80 फ़ाइलों की अनुमति है!",
+                noFiles: "कृपया पहले छवि फ़ाइलें अपलोड करें!",
+                processing: "छवियों को संसाधित किया जा रहा है... कृपया प्रतीक्षा करें।",
+                done: "रूपांतरण सफल! डाउनलोड शुरू हो रहा है।",
+                ready: "रूपांतरण के लिए तैयार",
+                thLight: "हल्का", thDark: "अंधेरा", thStrange: "अजीब"
+            }
+        };
+
+        // UI Target Components Elements Selectors References Setup Block
+        let currentLang = 'en';
+        let uploadedFiles = [];
+        let limitEnforced = true;
+
+        const langSelector = document.getElementById('langSelector');
+        const logoText = document.getElementById('logoText');
+        const lblConvertFrom = document.getElementById('lblConvertFrom');
+        const lblConvertTo = document.getElementById('lblConvertTo');
+        const txtDropInstructions = document.getElementById('txtDropInstructions');
+        const btnBrowse = document.getElementById('btnBrowse');
+        const btnConvert = document.getElementById('btnConvert');
+        const fileInput = document.getElementById('fileInput');
+        const dropArea = document.getElementById('dropArea');
+        const fileListArea = document.getElementById('fileListArea');
+
+        const infoTitle = document.getElementById('infoTitle');
+        const infoP1 = document.getElementById('infoP1');
+        const infoP2 = document.getElementById('infoP2');
+        const infoAuthors = document.getElementById('infoAuthors');
+
+        const setThemeTitle = document.getElementById('setThemeTitle');
+        const setThemeDesc = document.getElementById('setThemeDesc');
+        const setLimitTitle = document.getElementById('setLimitTitle');
+        const setLimitDesc = document.getElementById('setLimitDesc');
+        const btnRemoveLimit = document.getElementById('btnRemoveLimit');
+        const setForceTitle = document.getElementById('setForceTitle');
+        const setForceDesc = document.getElementById('setForceDesc');
+
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const btnModalCancel = document.getElementById('btnModalCancel');
+        const btnModalConfirm = document.getElementById('btnModalConfirm');
+        const warningModal = document.getElementById('warningModal');
+        const chkForceConvert = document.getElementById('chkForceConvert');
+
+        // Dynamic Translation Engine Framework Runner
+        function setLanguage(lang) {
+            currentLang = lang;
+            const t = dictionary[lang];
+            
+            logoText.textContent = t.logo;
+            lblConvertFrom.textContent = t.from;
+            lblConvertTo.textContent = t.to;
+            txtDropInstructions.textContent = t.drop;
+            btnBrowse.textContent = t.browse;
+            btnConvert.textContent = uploadedFiles.length > 0 ? `${t.convert} (${uploadedFiles.length})` : t.convert;
+            
+            infoTitle.textContent = t.infoTitle;
+            infoP1.textContent = t.infoP1;
+            infoP2.textContent = t.infoP2;
+            infoAuthors.textContent = t.authors;
+            
+            setThemeTitle.textContent = t.setThemeTitle;
+            setThemeDesc.textContent = t.setThemeDesc;
+            setLimitTitle.textContent = t.setLimitTitle;
+            setLimitDesc.textContent = t.setLimitDesc;
+            if (limitEnforced) {
+                btnRemoveLimit.textContent = t.btnRemoveLimit;
+                btnRemoveLimit.style.display = "block";
+            } else {
+                btnRemoveLimit.style.display = "none";
+            }
+            setForceTitle.textContent = t.setForceTitle;
+            setForceDesc.textContent = t.setForceDesc;
+            
+            modalTitle.textContent = t.modalTitle;
+            modalBody.textContent = t.modalBody;
+            btnModalCancel.textContent = t.modalCancel;
+            btnModalConfirm.textContent = t.modalConfirm;
+
+            document.getElementById('thLight').textContent = t.thLight;
+            document.getElementById('thDark').textContent = t.thDark;
+            document.getElementById('thStrange').textContent = t.thStrange;
+
+            // Redraw current loaded list item statuses correctly matched to language definitions
+            updateFileListView();
+        }
+
+        langSelector.addEventListener('change', (e) => setLanguage(e.target.value));
+
+        // Navigation Tabs View Router Switches Initialization Click Bindings
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Application Style Layout Palette Theme Selector Control Handles
+        document.querySelectorAll('.btn-theme').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-theme').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.body.setAttribute('data-theme', btn.dataset.theme);
+            });
+        });
+
+        // Trigger Configuration Limit Modals
+        btnRemoveLimit.addEventListener('click', () => {
+            warningModal.style.display = 'flex';
+        });
+        btnModalCancel.addEventListener('click', () => {
+            warningModal.style.display = 'none';
+        });
+        btnModalConfirm.addEventListener('click', () => {
+            limitEnforced = false;
+            warningModal.style.display = 'none';
+            btnRemoveLimit.style.display = 'none';
+            alert(dictionary[currentLang].limitRemoved);
+        });
+
+        // Browse / Upload Management Execution Elements Handlers
+        btnBrowse.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFilesSelection(e.target.files));
+
+        // Drag-and-Drop Triggers Handlers Mapping Setup
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.add('dragover');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('dragover');
+            }, false);
+        });
+        dropArea.addEventListener('drop', (e) => {
+            handleFilesSelection(e.dataTransfer.files);
+        });
+
+        function handleFilesSelection(filesList) {
+            if (limitEnforced && (uploadedFiles.length + filesList.length > 80)) {
+                alert(dictionary[currentLang].maxLimitErr);
+                return;
+            }
+            
+            for (let file of filesList) {
+                if (file.type.startsWith('image/') || file.name.endsWith('.heic') || file.name.endsWith('.HEIC') || file.name.endsWith('.avif')) {
+                    uploadedFiles.push({
+                        file: file,
+                        status: 'ready' // ready, processing, completed
+                    });
+                }
+            }
+
+            if (uploadedFiles.length > 0) {
+                fileListArea.style.display = 'block';
+                btnConvert.disabled = false;
+                btnConvert.textContent = `${dictionary[currentLang].convert} (${uploadedFiles.length})`;
+            }
+            updateFileListView();
+        }
+
+        function updateFileListView() {
+            fileListArea.innerHTML = '';
+            uploadedFiles.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'file-item';
+                
+                const info = document.createElement('div');
+                info.className = 'file-info';
+                
+                const name = document.createElement('span');
+                name.className = 'file-name';
+                name.textContent = item.file.name;
+                
+                const size = document.createElement('span');
+                size.className = 'file-size';
+                size.textContent = (item.file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                
+                info.appendChild(name);
+                info.appendChild(size);
+                
+                const status = document.createElement('span');
+                status.className = 'file-status';
+                
+                if (item.status === 'ready') status.textContent = dictionary[currentLang].ready;
+                else if (item.status === 'processing') status.textContent = '⏳';
+                else if (item.status === 'completed') status.textContent = '✅';
+                
+                row.appendChild(info);
+                row.appendChild(status);
+                fileListArea.appendChild(row);
+            });
+        }
+
+        // Image Engine Transformation Logic & Client Browser Canvas Processing Engine
+        btnConvert.addEventListener('click', async () => {
+            if (uploadedFiles.length === 0) {
+                alert(dictionary[currentLang].noFiles);
+                return;
+            }
+
+            btnConvert.disabled = true;
+            const targetExt = document.getElementById('targetFormat').value; // PNG, JPG, JPEG, WEBP, SVG, AVIF, HEIC
+            const forceConvert = chkForceConvert.checked;
+            
+            const zip = new JSZip();
+            let processedItemsCount = 0;
+
+            for (let i = 0; i < uploadedFiles.length; i++) {
+                uploadedFiles[i].status = 'processing';
+                updateFileListView();
+
+                const originalFile = uploadedFiles[i].file;
+                const origExt = originalFile.name.substring(originalFile.name.lastIndexOf('.')).toUpperCase();
+                
+                // Bypass identical formats calculation logic conditional rule routing match
+                if (!forceConvert && (origExt === `.${targetExt}` || (targetExt === 'JPG' && origExt === '.JPEG') || (targetExt === 'JPEG' && origExt === '.JPG'))) {
+                    // Direct pass extraction
+                    if (uploadedFiles.length === 1) {
+                        downloadBlobDirect(originalFile, originalFile.name);
+                    } else {
+                        zip.file(originalFile.name, originalFile);
+                    }
+                } else {
+                    // Execute canvas transformations conversions array pipeline
+                    try {
+                        const convertedBlob = await convertImageViaCanvas(originalFile, targetExt);
+                        const baseName = originalFile.name.substring(0, originalFile.name.lastIndexOf('.'));
+                        const newName = `${baseName}.${targetExt.toLowerCase()}`;
+                        
+                        if (uploadedFiles.length === 1) {
+                            downloadBlobDirect(convertedBlob, newName);
+                        } else {
+                            zip.file(newName, convertedBlob);
+                        }
+                    } catch (err) {
+                        console.error("Canvas processing fallback alert error routing link: ", err);
+                        // Fallback safely preserve file integrity configuration stream bytes routing inside zip array
+                        if (uploadedFiles.length === 1) {
+                            downloadBlobDirect(originalFile, originalFile.name);
+                        } else {
+                            zip.file(originalFile.name, originalFile);
+                        }
+                    }
+                }
+
+                uploadedFiles[i].status = 'completed';
+                updateFileListView();
+                processedItemsCount++;
+            }
+
+            // Packaging zip payload if collection structural length exceeds unit value boundary limits
+            if (uploadedFiles.length > 1) {
+                const zipContent = await zip.generateAsync({ type: 'blob' });
+                downloadBlobDirect(zipContent, `converted_images_${Date.now()}.zip`);
+            }
+
+            alert(dictionary[currentLang].done);
+            uploadedFiles = [];
+            fileListArea.style.display = 'none';
+            btnConvert.textContent = dictionary[currentLang].convert;
+        });
+
+        function convertImageViaCanvas(file, targetFormat) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        let mimeType = 'image/png';
+                        if (targetFormat === 'JPG' || targetFormat === 'JPEG') mimeType = 'image/jpeg';
+                        else if (targetFormat === 'WEBP') mimeType = 'image/webp';
+                        else if (targetFormat === 'AVIF') mimeType = 'image/avif';
+                        else if (targetFormat === 'SVG') mimeType = 'image/svg+xml';
+                        
+                        canvas.toBlob((blob) => {
+                            if (blob) resolve(blob);
+                            else reject(new Error("Canvas blob extraction failure error state."));
+                        }, mimeType, 0.92);
+                    };
+                    img.onerror = () => reject(new Error("Image compilation elements failure alert."));
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error("FileReader byte stream extraction disruption."));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function downloadBlobDirect(blob, filename) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        // Initialize application with baseline standard default state properties configurations setup template
+        setLanguage('en');
+    </script>
+    <!-- Made by @Kivasily (GitHub, Youtube, Discord) -->
+</body>
+</html>
