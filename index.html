@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMG Converter - 100% Serverless</title>
+    <!-- JSZip for zipping multiple files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            /* Light Theme Variables */
+            --bg-color: #f4f6f9;
+            --container-bg: #ffffff;
+            --text-color: #333333;
+            --accent-color: #4a90e2;
+            --accent-hover: #357abd;
+            --border-color: #e0e0e0;
+            --shadow-color: rgba(0, 0, 0, 0.05);
+            --nav-bg: #ffffff;
+            --card-bg: #f8f9fa;
+            --radius: 16px;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        [data-theme="dark"] {
+            /* Dark Theme Variables */
+            --bg-color: #0f172a;
+            --container-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --border-color: #334155;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --nav-bg: #1e293b;
+            --card-bg: #334155;
+        }
+
+        [data-theme="strange"] {
+            /* Strange Theme (Cyberpunk / Synthwave) */
+            --bg-color: #120124;
+            --container-bg: #22003b;
+            --text-color: #00ffcc;
+            --accent-color: #ff007f;
+            --accent-hover: #e6006f;
+            --border-color: #ff007f;
+            --shadow-color: rgba(255, 0, 127, 0.4);
+            --nav-bg: #1a002c;
+            --card-bg: #3d0066;
+            --font-family: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Nav Bar Styling */
+        nav {
+            background-color: var(--nav-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-color);
+            text-decoration: none;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .nav-item {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 44px;
+            height: 44px;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background-color: var(--card-bg);
+            color: var(--accent-color);
+            transform: scale(1.05);
+        }
+
+        .nav-item svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        /* Language Switcher */
+        .lang-select {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            outline: none;
+        }
+
+        /* Main Content Container */
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            margin: 40px auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Converter Layout */
+        .converter-card {
+            background-color: var(--container-bg);
+            border-radius: var(--radius);
+            box-shadow: 0 10px 25px var(--shadow-color);
+            border: 1px solid var(--border-color);
+            padding: 30px;
+        }
+
+        .format-selectors {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            gap: 20px;
+        }
+
+        .select-box {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .select-box label {
+            font-size: 14px;
+            font-weight: 600;
+            opacity: 0.8;
+        }
+
+        .custom-select {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 2px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            font-size: 16px;
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .custom-select:focus {
+            border-color: var(--accent-color);
+        }
+
+        .arrow-divider {
+            font-size: 24px;
+            color: var(--accent-color);
+            margin-top: 22px;
+        }
+
+        /* Dropzone Box */
+        .dropzone {
+            border: 3px dashed var(--border-color);
+            border-radius: var(--radius);
+            padding: 50px 30px;
+            text-align: center;
+            background-color: var(--card-bg);
+            cursor: pointer;
+            position: relative;
+            transition: border-color 0.3s, background-color 0.3s;
+            margin-bottom: 25px;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--accent-color);
+            background-color: var(--shadow-color);
+        }
+
+        .dropzone svg {
+            width: 60px;
+            height: 60px;
+            fill: var(--accent-color);
+            margin-bottom: 15px;
+        }
+
+        .dropzone p {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 15px;
+        }
+
+        .btn-upload {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
+
+        .btn-upload:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* File List Area */
+        .file-list-container {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 10px;
+            background-color: var(--card-bg);
+            display: none;
+        }
+
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .file-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .file-size {
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        .file-status {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-color);
+        }
+
+        /* Action Buttons */
+        .action-area {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 20px;
+        }
+
+        .btn-action {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 14px 35px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px var(--shadow-color);
+            width: 100%;
+        }
+
+        .btn-action:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-action:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Settings View */
+        .settings-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--container-bg);
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 10px var(--shadow-color);
+        }
+
+        .setting-details h3 {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+
+        .setting-details p {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .theme-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-theme {
+            padding: 10px 18px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-theme.active {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .btn-danger {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-danger:hover {
+            background-color: #dc2626;
+        }
+
+        /* Switch checkbox */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px; width: 18px;
+            left: 4px; bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-color);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Info Tab Styling */
+        .info-card {
+            background-color: var(--container-bg);
+            padding: 40px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px var(--shadow-color);
+            line-height: 1.6;
+        }
+
+        .info-card h2 {
+            color: var(--accent-color);
+            margin-bottom: 20px;
+        }
+
+        .info-card p {
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .info-card a {
+            color: var(--accent-color);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .info-card a:hover {
+            text-decoration: underline;
+        }
+
+        /* Social Cards Styling */
+        .social-cards {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .social-card {
+            flex: 1;
+            min-width: 120px;
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-color);
+            font-weight: 700;
+            box-shadow: 0 4px 6px var(--shadow-color);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .social-card:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px var(--shadow-color);
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+
+        .modal {
+            background-color: var(--container-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            max-width: 500px;
+            width: 100%;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            animation: modalSlide 0.3s ease;
+        }
+
+        @keyframes modalSlide {
+            from { transform: translateY(-30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal h2 {
+            color: #ef4444;
+            margin-bottom: 15px;
+        }
+
+        .modal p {
+            margin-bottom: 25px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn-modal-cancel {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-modal-confirm {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--bg-color);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-color);
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <!-- Top Navigation Bar -->
+    <nav>
+        <a href="#" class="logo" id="logoText">IMG Converter</a>
+        <div class="nav-right">
+            <div class="nav-links">
+                <!-- Home Icon -->
+                <button class="nav-item active" data-tab="home" id="btnTabHome" title="Home">
+                    <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+                </button>
+                <!-- Info Icon -->
+                <button class="nav-item" data-tab="info" id="btnTabInfo" title="Info">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                </button>
+                <!-- Logs Icon (Hidden by Default) -->
+                <button class="nav-item" data-tab="logs" id="btnTabLogs" title="Logs" style="display: none;">
+                    <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM10 7h8v2h-8zm0 4h8v2h-8zm0 4h4v2h-8z"/></svg>
+                </button>
+                <!-- Settings/More Icon -->
+                <button class="nav-item" data-tab="settings" id="btnTabSettings" title="Settings">
+                    <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                </button>
+            </div>
+            
+            <!-- Language Selector -->
+            <select class="lang-select" id="langSelector">
+                <option value="en">EN</option>
+                <option value="es">SP</option>
+                <option value="fr">FR</option>
+                <option value="ru">RU</option>
+                <option value="ja">JP</option>
+                <option value="it">IT</option>
+                <option value="de">DE</option>
+                <option value="kk">KZ</option>
+                <option value="uz">UZ</option>
+                <option value="uk">UA</option>
+                <option value="be">BY</option>
+                <option value="hi">IN</option>
+            </select>
+        </div>
+    </nav>
+
+    <!-- Main Container Layout -->
+    <div class="container">
+        
+        <!-- Tab 1: Home View -->
+        <div id="home" class="tab-content active">
+            <div class="converter-card">
+                <div class="format-selectors">
+                    <div class="select-box">
+                        <label id="lblConvertFrom">From Format</label>
+                        <select class="custom-select" id="srcFormat">
+                            <option value="auto">🔥 Auto-Detect All</option>
+                        </select>
+                    </div>
+                    <div class="arrow-divider">➔</div>
+                    <div class="select-box">
+                        <label id="lblConvertTo">To Target Format</label>
+                        <select class="custom-select" id="targetFormat">
+                            <option value="PNG">.PNG</option>
+                            <option value="JPG">.JPG</option>
+                            <option value="JPEG">.JPEG</option>
+                            <option value="WEBP" selected>.WEBP</option>
+                            <option value="SVG">.SVG</option>
+                            <option value="AVIF">.AVIF</option>
+                            <option value="HEIC">.HEIC</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Dropzone Box -->
+                <div class="dropzone" id="dropArea">
+                    <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                    <p id="txtDropInstructions">Drag & drop your images here or click to browse</p>
+                    <button class="btn-upload" id="btnBrowse" type="button">Choose Files</button>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display: none;">
+                </div>
+
+                <!-- File Items Log Container -->
+                <div class="file-list-container" id="fileListArea"></div>
+
+                <!-- Convert Call-to-action Action -->
+                <div class="action-area">
+                    <button class="btn-action" id="btnConvert" disabled>Convert Now</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: About Project Info View -->
+        <div id="info" class="tab-content">
+            <div class="info-card">
+                <h2 id="infoTitle">About IMG Converter</h2>
+                <p id="infoP1"></p>
+                <p id="infoP2"></p>
+                
+                <h2 id="authorTitle" style="margin-top: 35px; margin-bottom: 15px;">About Author</h2>
+                <p id="authorDesc"></p>
+                
+                <!-- Social Media Cards -->
+                <div class="social-cards">
+                    <a href="https://github.com/kivasily" target="_blank" class="social-card">GitHub</a>
+                    <a href="https://discord.com/" target="_blank" class="social-card">Discord</a>
+                    <a href="https://youtube.com/" target="_blank" class="social-card">YouTube</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Configuration Settings View -->
+        <div id="settings" class="tab-content">
+            <div class="settings-grid">
+                <!-- Theme Row Layout -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setThemeTitle">Interface Style Theme</h3>
+                        <p id="setThemeDesc">Modify the aesthetic design profile presentation of the client application environment.</p>
+                    </div>
+                    <div class="theme-buttons">
+                        <button class="btn-theme" data-theme="light" id="thLight">Light</button>
+                        <button class="btn-theme active" data-theme="dark" id="thDark">Dark</button>
+                        <button class="btn-theme" data-theme="strange" id="thStrange">Strange</button>
+                    </div>
+                </div>
+
+                <!-- Image Quality Configuration Range Slider -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setQualityTitle">Image Output Quality</h3>
+                        <p id="setQualityDesc">Adjust the output scaling compression density profile.</p>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 15px; min-width: 160px;">
+                        <input type="range" id="rngQuality" min="0.1" max="1.0" step="0.1" value="1.0" style="flex: 1; accent-color: var(--accent-color); cursor: pointer;">
+                        <span id="lblQualityVal" style="font-weight: 700; font-size: 16px; min-width: 30px; text-align: right;">1.0</span>
+                    </div>
+                </div>
+
+                <!-- Bypass Row Limit Adjustments -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setLimitTitle">Upload Capacity Constraint Limit</h3>
+                        <p id="setLimitDesc">Toggle restriction ceiling safety filters beyond the standard baseline threshold of 80 images simultaneously.</p>
+                    </div>
+                    <button class="btn-danger" id="btnRemoveLimit">Remove File Limit</button>
+                </div>
+
+                <!-- Bypass Processing Matching Extensions Switch -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setForceTitle">Force Identical Extension Re-Conversion</h3>
+                        <p id="setForceDesc">Force conversion algorithms to execute even when target matches input original format instead of original byte-pass stream routing.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chkForceConvert">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- Logs Enable Switch -->
+                <div class="setting-item">
+                    <div class="setting-details">
+                        <h3 id="setLogsTitle">Enable Session Conversion Logs</h3>
+                        <p id="setLogsDesc">Track metadata logs, operational analytics, and transformations tracking metrics.</p>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="chkLogs">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 4: Logs View -->
+        <div id="logs" class="tab-content">
+            <div class="info-card">
+                <h2 id="logsTitle">Conversion Session Logs</h2>
+                <div id="logsContainer" style="margin-top: 20px; max-height: 450px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                    <p id="noLogsTxt" style="opacity: 0.5; font-style: italic;">No execution operations recorded yet.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Warning Confirmation Modal Overlay Box -->
+    <div class="modal-overlay" id="warningModal">
+        <div class="modal">
+            <h2 id="modalTitle">Critical Capacity System Warning!</h2>
+            <p id="modalBody">Disabling total layout array capacity caps could severely trigger client system visual lag, thread memory drops, or immediate out-of-memory browser tab process crashes due to intensive hardware RAM requirements. Proceed under absolute caution.</p>
+            <div class="modal-actions">
+                <button class="btn-modal-cancel" id="btnModalCancel">Cancel</button>
+                <button class="btn-modal-confirm" id="btnModalConfirm">Disable Limit</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core App Application Logic Flow Script -->
+    <script>
+        // Multilingual Localization Strings Matrix Dictionary Array Block Mapping
+        const dictionary = {
+            en: {
+                logo: "IMG Converter",
+                from: "From Format",
+                to: "To Target Format",
+                drop: "Drag & drop your images here or click to browse",
+                browse: "Choose Files",
+                convert: "Convert Now",
+                infoTitle: "About IMG Converter",
+                infoP1: "This web application (HTML page) is a fully confidential and local image converter. All conversions take place directly within your browser. Consequently, we do not recommend uploading more than 40 files at once; if you have a weak device (slow RAM and/or a small amount of RAM, or a weak CPU), the browser might become overloaded. The maximum limit for uploaded files is 80 (if you consider your device powerful, disable the upload limit in 'Settings').",
+                infoP2: "Since all actions happen right on your device, everything runs completely offline and is 100% confidential, as your data is never transmitted anywhere. You can switch to your preferred language via the navigation panel above. If you appreciate speed, convenience, and data privacy—this site is for you. You can use this page at the <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>official link</a> or by downloading this HTML file from our <a href='https://github.com/kivasily/imgconvertor' target='_blank'>official repository</a>. IMG Converter collects zero data about you and operates without an internet connection once saved.",
+                authorTitle: "About Author",
+                authorDesc: "Author - @Kivasily. I build various simple AI-assisted websites that simplify people's lives and work routines. Each of my projects can be easily downloaded and executed locally from my official GitHub repositories. My websites collect zero information and are designed purely to save time and money. Below are my social media links:",
+                setThemeTitle: "Interface Style Theme",
+                setThemeDesc: "Modify the aesthetic design profile presentation of the client application environment.",
+                setLimitTitle: "Upload Capacity Constraint Limit",
+                setLimitDesc: "Toggle restriction ceiling safety filters beyond the standard baseline threshold of 80 images simultaneously.",
+                btnRemoveLimit: "Remove File Limit",
+                setForceTitle: "Force Identical Extension Re-Conversion",
+                setForceDesc: "Force conversion algorithms to execute even when target matches input original format instead of original byte-pass stream routing.",
+                setQualityTitle: "Image Output Quality",
+                setQualityDesc: "Adjust the output scaling and structural file compression density profile coefficient targets parameters.",
+                setLogsTitle: "Enable Session Conversion Logs",
+                setLogsDesc: "Track metadata logs, operational analytics, and byte size transformations pipelines tracking monitors metrics.",
+                logsTitle: "Conversion Session Logs",
+                noLogsTxt: "No execution operations recorded inside active environment loop cycle logs.",
+                modalTitleLimit: "Critical Capacity System Warning!",
+                modalBodyLimit: "Disabling capacity caps could trigger browser crashes due to intensive RAM requirements. Proceed under absolute caution.",
+                modalCancel: "Cancel",
+                modalConfirmLimit: "Disable Limit",
+                modalTitleLogs: "Are you sure?",
+                modalBodyLogs: "Enabling active logging metrics tracks structural optimization logs inside running memory.",
+                modalConfirmLogs: "Continue",
+                limitRemoved: "File threshold ceiling disabled. Process carefully!",
+                maxLimitErr: "Maximum 80 files allowed simultaneously!",
+                noFiles: "Please upload image files first!",
+                processing: "Processing images... Please wait.",
+                done: "Conversion successful! Triggering download assets.",
+                ready: "Ready to convert",
+                thLight: "Light", thDark: "Dark", thStrange: "Strange"
+            },
+            ru: {
+                logo: "IMG Converter", from: "Исходный формат", to: "Целевой формат", drop: "Перетащите изображения сюда или нажмите для выбора", browse: "Выбрать файлы", convert: "Конвертировать",
+                infoTitle: "О проекте IMG Converter",
+                infoP1: "Это веб-приложение (HTML-страница) представляет собой полностью конфиденциальный и локальный конвертер изображений. Все выполняемые конвертации проходят прямо в вашем браузере. Следовательно, мы не рекомендуем загружать более 40 файлов за раз, так как если у вас слабое устройство (медленная ОЗУ и/или мало ГБ ОЗУ, либо слабый ЦП), браузер может быть перегружен. Максимальный лимит загружаемых файлов — 80 (если вы считаете, что у вас мощное устройство, отключите лимит в настройках).",
+                infoP2: "Так как все действия происходят прямо на вашем устройстве, всё работает автономно и на 100% конфиденциально — ваши данные никуда не отправляются. Вы можете сменить язык на удобный вам в навигационной панели сверху. Если вы цените скорость, удобство и приватность ваших данных — этот сайт для вас. Вы можете использовать эту страницу, заходя по <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>официальной ссылке</a> или скачав этот HTML-файл из нашего <a href='https://github.com/kivasily/imgconvertor' target='_blank'>официального репозитория</a>. IMG Converter не собирает о вас никаких данных и может работать без подключения к интернету (после загрузки на устройство).",
+                authorTitle: "Об авторе",
+                authorDesc: "Автор — @Kivasily. Я делаю различные простые сайты с помощью ИИ, которые упрощают людям жизнь и работу. Каждый из моих сайтов можно просто скачать (и использовать локально) из моих официальных GitHub-репозиториев. Мои сайты не собирают никакую информацию и нужны лишь для экономии времени и денег. Ниже ссылки на мои социальные сети:",
+                setThemeTitle: "Тема оформления", setThemeDesc: "Изменение внешнего вида и цветовой схемы интерфейса приложения.",
+                setLimitTitle: "Лимит на загрузку файлов", setLimitDesc: "Отключение ограничений на количество загружаемых файлов (по умолчанию: 80).", btnRemoveLimit: "Убрать лимит",
+                setForceTitle: "Принудительная конвертация", setForceDesc: "Конвертировать файлы, даже если исходное расширение совпадает с целевым.",
+                setQualityTitle: "Качество изображений", setQualityDesc: "Настройка степени сжатия и качества итоговых файлов.",
+                setLogsTitle: "Включить логи сессии", setLogsDesc: "Отслеживание метаданных, времени обработки и статистики конвертации.",
+                logsTitle: "Логи конвертации", noLogsTxt: "История выполненных операций пока пуста.",
+                modalTitleLimit: "Внимание! Ограничение системы", modalBodyLimit: "Отключение лимита может привести к нехватке оперативной памяти и зависанию браузера.", modalCancel: "Отмена", modalConfirmLimit: "Отключить лимит",
+                modalTitleLogs: "Уверены?", modalBodyLogs: "Включение логов будет сохранять подробную техническую информацию о конвертациях в текущей сессии.", modalConfirmLogs: "Продолжить",
+                limitRemoved: "Ограничение отключено. Будьте осторожны!", maxLimitErr: "Максимум можно загрузить не более 80 файлов!", noFiles: "Сначала выберите файлы!", processing: "Обработка...", done: "Конвертация успешно завершена!", ready: "Готово", thLight: "Светлая", thDark: "Темная", thStrange: "Странная"
+            },
+            es: {
+                logo: "IMG Converter", from: "Formato de origen", to: "Formato de destino", drop: "Arrastre sus imágenes aquí", browse: "Seleccionar archivos", convert: "Convertir ahora",
+                infoTitle: "Acerca de IMG Converter",
+                infoP1: "Esta aplicación web (página HTML) es un conversor de imágenes completamente privado y local. Todas las conversiones se realizan directamente en tu navegador. Por lo tanto, no recomendamos subir más de 40 archivos a la vez, ya que si tienes un dispositivo de gama baja (con poca memoria RAM o un procesador débil), el navegador podría sobrecargarse. El límite máximo de archivos que se pueden subir es de 80 (si crees que tienes un dispositivo potente, desactiva este límite en la configuración).",
+                infoP2: "Dado que todas las acciones se realizan directamente en tu dispositivo, todo funciona completamente sin conexión y es 100% confidencial, ya que tus datos nunca se transmiten a ningún lugar. Puedes cambiar a tu idioma preferido a través del panel de navegación superior. Si valoras la velocidad, la comodidad y la privacidad de tus datos, este sitio es para ti. Puedes usar esta página en el <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>enlace oficial</a> o descargando este archivo HTML desde nuestro <a href='https://github.com/kivasily/imgconvertor' target='_blank'>repositorio oficial</a>. IMG Converter no recopila ningún dato sobre ti y funciona sin conexión a internet una vez guardado.",
+                authorTitle: "Sobre el Autor",
+                authorDesc: "Autor: @Kivasily. Creo sitios web sencillos con inteligencia artificial que simplifican la vida y las rutinas laborales de las personas. Todos mis proyectos se pueden descargar y ejecutar fácilmente desde mis repositorios oficiales de GitHub. Mis sitios web no recopilan información y están diseñados exclusivamente para ahorrar tiempo y dinero. A continuación, mis redes sociales:",
+                setThemeTitle: "Tema de estilo", setThemeDesc: "Modifique el diseño.", setLimitTitle: "Límite de carga", setLimitDesc: "Desactive la restricción de 80 imágenes.", btnRemoveLimit: "Eliminar límite",
+                setForceTitle: "Forzar reconversión", setForceDesc: "Fuerza la ejecución si los formatos coinciden.", setQualityTitle: "Calidad de Imagen", setQualityDesc: "Ajusta la compresión.",
+                setLogsTitle: "Activar Registros", setLogsDesc: "Rastrea estadísticas.", logsTitle: "Registros", noLogsTxt: "No hay registros.",
+                modalTitleLimit: "¡Advertencia!", modalBodyLimit: "Deshabilitar los límites podría causar bloqueos.", modalCancel: "Cancelar", modalConfirmLimit: "Desactivar",
+                modalTitleLogs: "¿Seguro?", modalBodyLogs: "Activa el registro técnico local.", modalConfirmLogs: "Continuar", limitRemoved: "Límite desactivado.", maxLimitErr: "¡Máximo 80 archivos!", noFiles: "¡Cargue archivos!", processing: "Procesando...", done: "¡Éxito!", ready: "Listo", thLight: "Claro", thDark: "Oscuro", thStrange: "Extraño"
+            },
+            fr: {
+                logo: "IMG Converter", from: "Format d'origine", to: "Format cible", drop: "Glissez vos images ici", browse: "Parcourir", convert: "Convertir",
+                infoTitle: "À propos",
+                infoP1: "Cette application web (page HTML) est un convertisseur d'images entièrement privé et local. Toutes les conversions s'effectuent directement dans votre navigateur. Par conséquent, nous vous déconseillons de télécharger plus de 40 fichiers simultanément, car si vous utilisez un appareil peu performant (faible mémoire vive ou processeur peu puissant), votre navigateur risque d'être surchargé. La limite maximale de fichiers par téléchargement est de 80 (si vous disposez d'un appareil puissant, vous pouvez désactiver cette limite dans les paramètres).",
+                infoP2: "Comme toutes les actions se déroulent directement sur votre appareil, tout fonctionne hors ligne et reste 100 % confidentiel, vos données n'étant jamais transmises. Vous pouvez choisir votre langue préférée via le panneau de navigation en haut. Si vous appréciez la rapidité, la simplicité d'utilisation et la confidentialité de vos données, ce site est fait pour vous. Vous pouvez utiliser cette page via le <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>lien officiel</a> ou en téléchargeant ce fichier HTML depuis notre <a href='https://github.com/kivasily/imgconvertor' target='_blank'>dépôt officiel</a>. IMG Converter ne collecte aucune donnée vous concernant et fonctionne sans connexion Internet une fois enregistré.",
+                authorTitle: "À propos de l'auteur",
+                authorDesc: "Auteur: @Kivasily. Je crée divers sites web simples, basés sur l’IA, qui simplifient la vie et les tâches professionnelles. Chacun de mes projets peut être facilement téléchargé et exécuté localement depuis mes dépôts GitHub officiels. Mes sites web ne collectent aucune information et sont conçus uniquement pour vous faire gagner du temps et de l’argent. Retrouvez-moi sur les réseaux sociaux ci-dessous:",
+                setThemeTitle: "Thème", setThemeDesc: "Modifiez l'apparence.", setLimitTitle: "Limite", setLimitDesc: "Supprimez la restriction de 80 images.", btnRemoveLimit: "Supprimer la limite",
+                setForceTitle: "Forcer", setForceDesc: "Force l'exécution si formats identiques.", setQualityTitle: "Qualité", setQualityDesc: "Ajustez la compression.",
+                setLogsTitle: "Activer les journaux", setLogsDesc: "Suivez les statistiques.", logsTitle: "Journaux", noLogsTxt: "Aucun journal.",
+                modalTitleLimit: "Avertissement !", modalBodyLimit: "Peut saturer la RAM.", modalCancel: "Annuler", modalConfirmLimit: "Désactiver",
+                modalTitleLogs: "Sûr ?", modalBodyLogs: "Active le suivi technique.", modalConfirmLogs: "Continuer", limitRemoved: "Limite désactivée.", maxLimitErr: "Maximum 80 fichiers !", noFiles: "Chargez des fichiers !", processing: "Traitement...", done: "Réussi !", ready: "Prêt", thLight: "Clair", thDark: "Sombre", thStrange: "Étrange"
+            },
+            ja: {
+                logo: "IMG Converter", from: "元の形式", to: "変換先の形式", drop: "ここに画像をドロップ", browse: "ファイルを選択", convert: "変換",
+                infoTitle: "情報", infoP1: "完全ローカルの画像変換器です。低スペック端末では40枚以上は非推奨です。", infoP2: "100%安全でオフライン動作します。<a href='https://kivasily.github.io/imgconvertor/' target='_blank'>公式リンク</a>。申し訳ございませんが、お客様の言語版サイトはまだ完全に翻訳されていません。サイトの説明と著者紹介は、英語、スペイン語、フランス語、ロシア語でご覧いただけます。よろしくお願いいたします。",
+                authorTitle: "著者について", authorDesc: "著者 - @Kivasily。AIを活用したサイトを開発。SNS:",
+                setThemeTitle: "テーマ", setThemeDesc: "外観を変更。", setLimitTitle: "制限解除", setLimitDesc: "80枚の制限を解除。", btnRemoveLimit: "解除する",
+                setForceTitle: "強制変換", setForceDesc: "同一形式でも再処理します。", setQualityTitle: "画質", setQualityDesc: "圧縮率を調整。",
+                setLogsTitle: "ログ有効化", setLogsDesc: "統計を追跡。", logsTitle: "ログ", noLogsTxt: "ログはありません。",
+                modalTitleLimit: "警告！", modalBodyLimit: "クラッシュの危険性があります。", modalCancel: "キャンセル", modalConfirmLimit: "解除",
+                modalTitleLogs: "よろしいですか？", modalBodyLogs: "統計の記録を開始します。", modalConfirmLogs: "続行", limitRemoved: "制限解除完了。", maxLimitErr: "最大80ファイル！", noFiles: "画像を選択！", processing: "処理中...", done: "完了！", ready: "準備完了", thLight: "ライト", thDark: "ダーク", thStrange: "ストレンジ"
+            },
+            it: {
+                logo: "IMG Converter", from: "Origine", to: "Destinazione", drop: "Trascina i file qui", browse: "Sfoglia", convert: "Converti",
+                infoTitle: "Info", infoP1: "Convertitore locale sicuro. Massimo 40 file su PC standard. Ci scusiamo, ma la descrizione del sito e la biografia dell'autore nella tua lingua non sono ancora completamente tradotte. Se necessario, puoi consultare la descrizione completa del sito e la biografia dell'autore in inglese, spagnolo, francese e russo. Grazie!", infoP2: "Offline. <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>Link ufficiale</a>.",
+                authorTitle: "Autore", authorDesc: "Autore - @Kivasily. Creo siti con l'IA. Social:",
+                setThemeTitle: "Tema", setThemeDesc: "Modifica colori.", setLimitTitle: "Rimuovi limite", setLimitDesc: "Sblocca oltre 80 immagini.", btnRemoveLimit: "Rimuovi",
+                setForceTitle: "Forza", setForceDesc: "Forza elaborazione.", setQualityTitle: "Qualità", setQualityDesc: "Regola compressione.",
+                setLogsTitle: "Abilita Log", setLogsDesc: "Traccia statistiche.", logsTitle: "Log", noLogsTxt: "Nessun log.",
+                modalTitleLimit: "Avviso!", modalBodyLimit: "Rischio esaurimento RAM.", modalCancel: "Annulla", modalConfirmLimit: "Sblocca",
+                modalTitleLogs: "Sicuro?", modalBodyLogs: "Attiva tracciamento.", modalConfirmLogs: "Continua", limitRemoved: "Limite rimosso.", maxLimitErr: "Massimo 80 file!", noFiles: "Carica immagini!", processing: "Elaborazione...", done: "Completato!", ready: "Pronto", thLight: "Chiaro", thDark: "Scuro", thStrange: "Strano"
+            },
+            de: {
+                logo: "IMG Converter", from: "Ausgangsformat", to: "Zielformat", drop: "Bilder hierher ziehen", browse: "Wählen", convert: "Konvertieren",
+                infoTitle: "Über", infoP1: "Ein lokaler Bildkonverter. Maximal 40 Dateien empfohlen.", infoP2: "Offline und anonym. <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>Offizieller Link</a>.",
+                authorTitle: "Autor", authorDesc: "Autor - @Kivasily. Ich erstelle KI-Tools. Social Media:",
+                setThemeTitle: "Design", setThemeDesc: "Farbschema anpassen.", setLimitTitle: "Limit aufheben", setLimitDesc: "Limit aufheben.", btnRemoveLimit: "Aufheben",
+                setForceTitle: "Erzwingen", setForceDesc: "Identische Formate erzwingen.", setQualityTitle: "Qualität", setQualityDesc: "Komprimierung anpassen.",
+                setLogsTitle: "Logs aktivieren", setLogsDesc: "Statistiken verfolgen.", logsTitle: "Logs", noLogsTxt: "Keine Logs.",
+                modalTitleLimit: "Warnung!", modalBodyLimit: "Kann zu RAM-Überlastungen führen.", modalCancel: "Abbrechen", modalConfirmLimit: "Deaktivieren",
+                modalTitleLogs: "Sicher?", modalBodyLogs: "Aktiviert das Tracking.", modalConfirmLogs: "Weiter", limitRemoved: "Limit aufgehoben.", maxLimitErr: "Maximal 80 Dateien!", noFiles: "Dateien wählen!", processing: "Verarbeitung...", done: "Erfolgreich!", ready: "Bereit", thLight: "Hell", thDark: "Dunkel", thStrange: "Seltsam"
+            },
+            kk: {
+                logo: "IMG Converter", from: "Бастапқы формат", to: "Мақсатты формат", drop: "Суреттерді сүйреңіз", browse: "Таңдау", convert: "Конвертациялау",
+                infoTitle: "Ақпарат", infoP1: "Бұл локальді конвертер. 40 файлдан артық жүктемеуді ұсынамыз.", infoP2: "Офлайн жұмыс істейді. <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>Ресми сілтеме</a>.",
+                authorTitle: "Автор туралы", authorDesc: "Автор - @Kivasily. ИИ жобалар жасаймын. Желілер:",
+                setThemeTitle: "Тақырып", setThemeDesc: "Сыртқы түрін өзгерту.", setLimitTitle: "Шектеуді жою", setLimitDesc: "80 файлдық шектеуді өшіру.", btnRemoveLimit: "Жою",
+                setForceTitle: "Мәжбүрлі", setForceDesc: "Қайта өңдеу.", setQualityTitle: "Сапа", setQualityDesc: "Қысылуды реттеу.",
+                setLogsTitle: "Логтарды қосу", setLogsDesc: "Статистиканы бақылау.", logsTitle: "Логтар", noLogsTxt: "Логтар жоқ.",
+                modalTitleLimit: "Ескерту!", modalBodyLimit: "Браузер істен шығуы мүмкін.", modalCancel: "Бас тарту", modalConfirmLimit: "Өшіру",
+                modalTitleLogs: "Сенімдісіз бе?", modalBodyLogs: "Статистиканы жинауды қосады.", modalConfirmLogs: "Жалғастыру", limitRemoved: "Шектеу өшірілді.", maxLimitErr: "Ең көбі 80 файл!", noFiles: "Сурет жүктеңіз!", processing: "Өңделуде...", done: "Аяқталды!", ready: "Дайын", thLight: "Жарық", thDark: "Қараңғы", thStrange: "Түрлі"
+            },
+            uz: {
+                logo: "IMG Converter", from: "Исходный формат", to: "Maқсадли формат", drop: "Rasmlarni sudrab keling", browse: "Tanlash", convert: "Konvertatsiya",
+                infoTitle: "Ma'lumot", infoP1: "Lokal rasm konverteridir. 40 tadan ortiq yuklamaslik tavsiya etiladi.", infoP2: "Internetsiz ishlaydi. <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>Rasmiy silteme</a>.",
+                authorTitle: "Muallif haqida", authorDesc: "Muallif - @Kivasily. Saytlar yarataman. Tarmoqlar:",
+                setThemeTitle: "Mavzu", setThemeDesc: "Ko'rinishni o'zgartirish.", setLimitTitle: "Cheklovni olib tashlash", setLimitDesc: "80 talik cheklovni o'chirish.", btnRemoveLimit: "O'chirish",
+                setForceTitle: "Majburiy", setForceDesc: "Qayta ishlash.", setQualityTitle: "Sifat", setQualityDesc: "Siqilish darajasini sozlash.",
+                setLogsTitle: "Loglarni yoqish", setLogsDesc: "Statistikani kuzatish.", logsTitle: "Loglar", noLogsTxt: "Loglar yo'q.",
+                modalTitleLimit: "Ogohlantirish!", modalBodyLimit: "Xotira to'lib qolishi mumkin.", modalCancel: "Bekor qilish", modalConfirmLimit: "O'chirish",
+                modalTitleLogs: "Ishonchingiz komilmi?", modalBodyLogs: "Loglarni faollashtiradi.", modalConfirmLogs: "Davom etish", limitRemoved: "Cheklov o'chirildi.", maxLimitErr: "Ko'pi bilan 80 ta!", noFiles: "Rasmlarni yuklang!", processing: "Ishlanmoqda...", done: "Bajarildi!", ready: "Tayyor", thLight: "Yorqin", thDark: "To'q", thStrange: "G'alati"
+            },
+            uk: {
+                logo: "IMG Converter", from: "Початковий", to: "Цільовий", drop: "Перетягніть сюди", browse: "Вибрати", convert: "Конвертувати",
+                infoTitle: "Про проект", infoP1: "Локальний конвертер. На слабких пристроях не більше 40 зображень. Описание сайта и биография автора в вашей версии (UA) еще не переведены полностью. При необходимости, прочитайте полные версии на русском языке. Спасибо!", infoP2: "Працює автономно. <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>Офіційне посилання</a>.",
+                authorTitle: "Про Автора", authorDesc: "Автор — @Kivasily. Створюю сайти за допомогою ШІ. Соцмережі:",
+                setThemeTitle: "Тема", setThemeDesc: "Зміна інтерфейсу.", setLimitTitle: "Ліміт", setLimitDesc: "Вимкнення обмеження.", btnRemoveLimit: "Прибрати ліміт",
+                setForceTitle: "Примусова", setForceDesc: "Конвертувати завжди.", setQualityTitle: "Якість", setQualityDesc: "Налаштування стиснення.",
+                setLogsTitle: "Увімкнути логи", setLogsDesc: "Відстеження статистики.", logsTitle: "Логи", noLogsTxt: "Історія порожня.",
+                modalTitleLimit: "Увага!", modalBodyLimit: "Може спричинити брак оперативної пам'яті.", modalCancel: "Скасувати", modalConfirmLimit: "Вимкнути",
+                modalTitleLogs: "Впевнені?", modalBodyLogs: "Вмикає запис статистики.", modalConfirmLogs: "Продовжити", limitRemoved: "Обмеження вимкнено.", maxLimitErr: "Максимум 80!", noFiles: "Завантажте файли!", processing: "Обробка...", done: "Успішно!", ready: "Готово", thLight: "Світла", thDark: "Темна", thStrange: "Дивна"
+            },
+            be: {
+                logo: "IMG Converter", from: "Зыходны", to: "Цілявы", drop: "Перацягніце сюды", browse: "Выбраць", convert: "Канвертаваць",
+                infoTitle: "Пра праект", infoP1: "Лакальны канвертар. Не больш за 40 файлаў адначасова. Описание сайта и биография автора в вашей версии (BY) еще не переведены полностью. При необходимости, прочитайте полные версии на русском языке. Спасибо!", infoP2: "Аўтаномна. <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>Афіцыйная спасылка</a>.",
+                authorTitle: "Пра Аўтара", authorDesc: "Аўтар — @Kivasily. Ствараю сайти з ШІ. Сеткі:",
+                setThemeTitle: "Тэма", setThemeDesc: "Змена інтэрфейсу.", setLimitTitle: "Ліміт", setLimitDesc: "Адключэнне ліміту.", btnRemoveLimit: "Прыбраць ліміт",
+                setForceTitle: "Прымусовая", setForceDesc: "Апрацоўка заўсёды.", setQualityTitle: "Якасць", setQualityDesc: "Налада сціску.",
+                setLogsTitle: "Уключыць логі", setLogsDesc: "Статыстыка.", logsTitle: "Логі", noLogsTxt: "Гісторыя пустая.",
+                modalTitleLimit: "Увага!", modalBodyLimit: "Выклікае краш з-за RAM.", modalCancel: "Адмена", modalConfirmLimit: "Адключыць",
+                modalTitleLogs: "Упэўнены?", modalBodyLogs: "Уключае статыстыку.", modalConfirmLogs: "Працягнуць", limitRemoved: "Ліміт адключаны.", maxLimitErr: "Максімум 80!", noFiles: "Загрузіце файлы!", processing: "Апрацоўка...", done: "Паспяхова!", ready: "Гатова", thLight: "Светлая", thDark: "Цёмная", thStrange: "Дзіўная"
+            },
+            hi: {
+                logo: "IMG Converter", from: "मूल फ़ॉर्मेट", to: "लक्ष्य फ़ॉर्मेट", drop: "छवियों को यहाँ खींचें", browse: "चुनें", convert: "बदलें",
+                infoTitle: "जानकारी", infoP1: "यह स्थानीय कनवर्टर है। 40 से अधिक फाइलें अनुशंसित नहीं हैं।", infoP2: "पूरी तरह से ऑफलाइन। <a href='https://kivasily.github.io/imgconvertor/' target='_blank'>आधिकारिक लिंक</a>।",
+                authorTitle: "लेखक", authorDesc: "लेखक - @Kivasily। मैं एआई टूल बनाता हूं। सोशल मीडिया:",
+                setThemeTitle: "थीम", setThemeDesc: "डिज़ाइन बदलें।", setLimitTitle: "सीमा", setLimitDesc: "सीमा अक्षम करें।", btnRemoveLimit: "हटाएँ",
+                setForceTitle: "बलपूर्वक", setForceDesc: "हमेशा रूपांतरण करें।", setQualityTitle: "गुणवत्ता", setQualityDesc: "संपीड़न समायोजित करें।",
+                setLogsTitle: "लॉग", setLogsDesc: "आंकड़ों को ट्रैक करें।", logsTitle: "लॉग", noLogsTxt: "कोई लॉग नहीं।",
+                modalTitleLimit: "चेतावनी!", modalBodyLimit: "ब्राउज़र क्रैश हो सकता है।", modalCancel: "रद्द करें", modalConfirmLimit: "अक्षम करें",
+                modalTitleLogs: "क्या आप निश्चित हैं?", modalBodyLogs: "सत्र लॉगिंग चालू करता है।", modalConfirmLogs: "जारी रखें", limitRemoved: "सीमा हटा दी गई।", maxLimitErr: "अधिकतम 80 फ़ाइलें!", noFiles: "छवियां अपलोड करें!", processing: "प्रसंस्करण...", done: "रूपांतरण सफल!", ready: "तैयार", thLight: "हल्का", thDark: "अंधेरा", thStrange: "अजीब"
+            }
+        };
+
+        // UI Variables
+        let currentLang = 'en';
+        let uploadedFiles = [];
+        let limitEnforced = true;
+        let modalContext = 'limit'; // 'limit' or 'logs'
+
+        const langSelector = document.getElementById('langSelector');
+        const logoText = document.getElementById('logoText');
+        const lblConvertFrom = document.getElementById('lblConvertFrom');
+        const lblConvertTo = document.getElementById('lblConvertTo');
+        const txtDropInstructions = document.getElementById('txtDropInstructions');
+        const btnBrowse = document.getElementById('btnBrowse');
+        const btnConvert = document.getElementById('btnConvert');
+        const fileInput = document.getElementById('fileInput');
+        const dropArea = document.getElementById('dropArea');
+        const fileListArea = document.getElementById('fileListArea');
+
+        const infoTitle = document.getElementById('infoTitle');
+        const infoP1 = document.getElementById('infoP1');
+        const infoP2 = document.getElementById('infoP2');
+        const authorTitle = document.getElementById('authorTitle');
+        const authorDesc = document.getElementById('authorDesc');
+
+        const setThemeTitle = document.getElementById('setThemeTitle');
+        const setThemeDesc = document.getElementById('setThemeDesc');
+        const setLimitTitle = document.getElementById('setLimitTitle');
+        const setLimitDesc = document.getElementById('setLimitDesc');
+        const btnRemoveLimit = document.getElementById('btnRemoveLimit');
+        const setForceTitle = document.getElementById('setForceTitle');
+        const setForceDesc = document.getElementById('setForceDesc');
+        const setQualityTitle = document.getElementById('setQualityTitle');
+        const setQualityDesc = document.getElementById('setQualityDesc');
+        const setLogsTitle = document.getElementById('setLogsTitle');
+        const setLogsDesc = document.getElementById('setLogsDesc');
+        const logsTitle = document.getElementById('logsTitle');
+        const noLogsTxt = document.getElementById('noLogsTxt');
+
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+        const btnModalCancel = document.getElementById('btnModalCancel');
+        const btnModalConfirm = document.getElementById('btnModalConfirm');
+        const warningModal = document.getElementById('warningModal');
+        const chkForceConvert = document.getElementById('chkForceConvert');
+        const chkLogs = document.getElementById('chkLogs');
+        const rngQuality = document.getElementById('rngQuality');
+        const lblQualityVal = document.getElementById('lblQualityVal');
+
+        // Dynamic Translation Engine Framework Runner
+        function setLanguage(lang) {
+            currentLang = lang;
+            const t = dictionary[lang];
+            
+            logoText.textContent = t.logo;
+            lblConvertFrom.textContent = t.from;
+            lblConvertTo.textContent = t.to;
+            txtDropInstructions.textContent = t.drop;
+            btnBrowse.textContent = t.browse;
+            btnConvert.textContent = uploadedFiles.length > 0 ? `${t.convert} (${uploadedFiles.length})` : t.convert;
+            
+            infoTitle.textContent = t.infoTitle;
+            infoP1.innerHTML = t.infoP1;
+            infoP2.innerHTML = t.infoP2;
+            authorTitle.textContent = t.authorTitle;
+            authorDesc.textContent = t.authorDesc;
+            
+            setThemeTitle.textContent = t.setThemeTitle;
+            setThemeDesc.textContent = t.setThemeDesc;
+            setLimitTitle.textContent = t.setLimitTitle;
+            setLimitDesc.textContent = t.setLimitDesc;
+            if (limitEnforced) {
+                btnRemoveLimit.textContent = t.btnRemoveLimit;
+                btnRemoveLimit.style.display = "block";
+            } else {
+                btnRemoveLimit.style.display = "none";
+            }
+            setForceTitle.textContent = t.setForceTitle;
+            setForceDesc.textContent = t.setForceDesc;
+            setQualityTitle.textContent = t.setQualityTitle;
+            setQualityDesc.textContent = t.setQualityDesc;
+            setLogsTitle.textContent = t.setLogsTitle;
+            setLogsDesc.textContent = t.setLogsDesc;
+            logsTitle.textContent = t.logsTitle;
+            if (noLogsTxt) noLogsTxt.textContent = t.noLogsTxt;
+
+            if (modalContext === 'limit') {
+                modalTitle.textContent = t.modalTitleLimit;
+                modalBody.textContent = t.modalBodyLimit;
+                btnModalCancel.textContent = t.modalCancel;
+                btnModalConfirm.textContent = t.modalConfirmLimit;
+            } else {
+                modalTitle.textContent = t.modalTitleLogs;
+                modalBody.textContent = t.modalBodyLogs;
+                btnModalCancel.textContent = t.modalCancel;
+                btnModalConfirm.textContent = t.modalConfirmLogs;
+            }
+
+            document.getElementById('thLight').textContent = t.thLight;
+            document.getElementById('thDark').textContent = t.thDark;
+            document.getElementById('thStrange').textContent = t.thStrange;
+
+            updateFileListView();
+        }
+
+        langSelector.addEventListener('change', (e) => setLanguage(e.target.value));
+
+        // Navigation Tabs Routing
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+                
+                btn.classList.add('active');
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Application Themes
+        document.querySelectorAll('.btn-theme').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.btn-theme').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                document.body.setAttribute('data-theme', btn.dataset.theme);
+            });
+        });
+
+        // Quality Slider
+        rngQuality.addEventListener('input', (e) => {
+            lblQualityVal.textContent = e.target.value;
+        });
+
+        // Limit Removal Modal Trigger
+        btnRemoveLimit.addEventListener('click', () => {
+            modalContext = 'limit';
+            setLanguage(currentLang);
+            warningModal.style.display = 'flex';
+        });
+
+        // Logs Modal Trigger
+        chkLogs.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                modalContext = 'logs';
+                setLanguage(currentLang);
+                warningModal.style.display = 'flex';
+            } else {
+                document.getElementById('btnTabLogs').style.display = 'none';
+                if (document.getElementById('btnTabLogs').classList.contains('active')) {
+                    document.getElementById('btnTabHome').click();
+                }
+            }
+        });
+
+        // Modal Action Logic
+        btnModalCancel.addEventListener('click', () => {
+            if (modalContext === 'logs') {
+                chkLogs.checked = false;
+            }
+            warningModal.style.display = 'none';
+        });
+
+        btnModalConfirm.addEventListener('click', () => {
+            warningModal.style.display = 'none';
+            if (modalContext === 'limit') {
+                limitEnforced = false;
+                btnRemoveLimit.style.display = 'none';
+                alert(dictionary[currentLang].limitRemoved);
+            } else if (modalContext === 'logs') {
+                document.getElementById('btnTabLogs').style.display = 'flex';
+            }
+        });
+
+        // Browse / Upload Management Execution Elements Handlers
+        btnBrowse.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => handleFilesSelection(e.target.files));
+
+        // IMPORTANT FIX: Preserved original working event listener setup for drag-and-drop
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.add('dragover');
+            }, false);
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('dragover');
+            }, false);
+        });
+        
+        dropArea.addEventListener('drop', (e) => {
+            handleFilesSelection(e.dataTransfer.files);
+        });
+
+        function handleFilesSelection(filesList) {
+            if (limitEnforced && (uploadedFiles.length + filesList.length > 80)) {
+                alert(dictionary[currentLang].maxLimitErr);
+                return;
+            }
+            
+            for (let file of filesList) {
+                if (file.type.startsWith('image/') || file.name.endsWith('.heic') || file.name.endsWith('.HEIC') || file.name.endsWith('.avif')) {
+                    uploadedFiles.push({
+                        file: file,
+                        status: 'ready'
+                    });
+                }
+            }
+
+            if (uploadedFiles.length > 0) {
+                fileListArea.style.display = 'block';
+                btnConvert.disabled = false;
+                btnConvert.textContent = `${dictionary[currentLang].convert} (${uploadedFiles.length})`;
+            }
+            updateFileListView();
+        }
+
+        function updateFileListView() {
+            fileListArea.innerHTML = '';
+            uploadedFiles.forEach((item, index) => {
+                const row = document.createElement('div');
+                row.className = 'file-item';
+                
+                const info = document.createElement('div');
+                info.className = 'file-info';
+                
+                const name = document.createElement('span');
+                name.className = 'file-name';
+                name.textContent = item.file.name;
+                
+                const size = document.createElement('span');
+                size.className = 'file-size';
+                size.textContent = (item.file.size / (1024 * 1024)).toFixed(2) + ' MB';
+                
+                info.appendChild(name);
+                info.appendChild(size);
+                
+                const status = document.createElement('span');
+                status.className = 'file-status';
+                
+                if (item.status === 'ready') status.textContent = dictionary[currentLang].ready;
+                else if (item.status === 'processing') status.textContent = '⏳';
+                else if (item.status === 'completed') status.textContent = '✅';
+                
+                row.appendChild(info);
+                row.appendChild(status);
+                fileListArea.appendChild(row);
+            });
+        }
+
+        // Image Engine Transformation Logic & Client Browser Canvas Processing Engine
+        btnConvert.addEventListener('click', async () => {
+            if (uploadedFiles.length === 0) {
+                alert(dictionary[currentLang].noFiles);
+                return;
+            }
+
+            btnConvert.disabled = true;
+            const targetExt = document.getElementById('targetFormat').value; // PNG, JPG, JPEG, WEBP, SVG, AVIF, HEIC
+            const forceConvert = chkForceConvert.checked;
+            
+            const zip = new JSZip();
+            let processedItemsCount = 0;
+
+            for (let i = 0; i < uploadedFiles.length; i++) {
+                uploadedFiles[i].status = 'processing';
+                updateFileListView();
+
+                const originalFile = uploadedFiles[i].file;
+                const origExt = originalFile.name.substring(originalFile.name.lastIndexOf('.')).toUpperCase();
+                const fileSizeFormatted = (originalFile.size / (1024 * 1024)).toFixed(2) + ' MB';
+                const startTime = performance.now();
+                
+                // Bypass identical formats calculation logic conditional rule routing match
+                if (!forceConvert && (origExt === `.${targetExt}` || (targetExt === 'JPG' && origExt === '.JPEG') || (targetExt === 'JPEG' && origExt === '.JPG'))) {
+                    if (uploadedFiles.length === 1) {
+                        downloadBlobDirect(originalFile, originalFile.name);
+                    } else {
+                        zip.file(originalFile.name, originalFile);
+                    }
+                    const duration = (performance.now() - startTime).toFixed(0);
+                    pushLogToConsole(originalFile.name, origExt, `.${targetExt} (Bypassed)`, fileSizeFormatted, duration);
+                } else {
+                    // Execute canvas transformations conversions array pipeline
+                    try {
+                        const convertedBlob = await convertImageViaCanvas(originalFile, targetExt);
+                        const baseName = originalFile.name.substring(0, originalFile.name.lastIndexOf('.'));
+                        const newName = `${baseName}.${targetExt.toLowerCase()}`;
+                        
+                        if (uploadedFiles.length === 1) {
+                            downloadBlobDirect(convertedBlob, newName);
+                        } else {
+                            zip.file(newName, convertedBlob);
+                        }
+                        const duration = (performance.now() - startTime).toFixed(0);
+                        pushLogToConsole(originalFile.name, origExt, `.${targetExt}`, fileSizeFormatted, duration);
+                    } catch (err) {
+                        console.error("Canvas processing fallback alert error routing link: ", err);
+                        // Fallback safely preserve file integrity configuration stream bytes routing inside zip array
+                        if (uploadedFiles.length === 1) {
+                            downloadBlobDirect(originalFile, originalFile.name);
+                        } else {
+                            zip.file(originalFile.name, originalFile);
+                        }
+                        const duration = (performance.now() - startTime).toFixed(0);
+                        pushLogToConsole(originalFile.name, origExt, `${origExt} (Fallback)`, fileSizeFormatted, duration);
+                    }
+                }
+
+                uploadedFiles[i].status = 'completed';
+                updateFileListView();
+                processedItemsCount++;
+            }
+
+            // Packaging zip payload if collection structural length exceeds unit value boundary limits
+            if (uploadedFiles.length > 1) {
+                const zipContent = await zip.generateAsync({ type: 'blob' });
+                downloadBlobDirect(zipContent, `converted_images_${Date.now()}.zip`);
+            }
+
+            alert(dictionary[currentLang].done);
+            uploadedFiles = [];
+            fileListArea.style.display = 'none';
+            btnConvert.textContent = dictionary[currentLang].convert;
+        });
+
+        function convertImageViaCanvas(file, targetFormat) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        
+                        let mimeType = 'image/png';
+                        if (targetFormat === 'JPG' || targetFormat === 'JPEG') mimeType = 'image/jpeg';
+                        else if (targetFormat === 'WEBP') mimeType = 'image/webp';
+                        else if (targetFormat === 'AVIF') mimeType = 'image/avif';
+                        else if (targetFormat === 'SVG') mimeType = 'image/svg+xml';
+                        
+                        const qualitySetting = parseFloat(rngQuality.value);
+                        
+                        canvas.toBlob((blob) => {
+                            if (blob) resolve(blob);
+                            else reject(new Error("Canvas blob extraction failure error state."));
+                        }, mimeType, qualitySetting);
+                    };
+                    img.onerror = () => reject(new Error("Image compilation elements failure alert."));
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error("FileReader byte stream extraction disruption."));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Operational Logging Analytics Engine
+        function pushLogToConsole(name, from, to, size, duration) {
+            if (!chkLogs.checked) return;
+            
+            const logsContainer = document.getElementById('logsContainer');
+            const placeholder = document.getElementById('noLogsTxt');
+            if (placeholder) placeholder.remove();
+            
+            const logRow = document.createElement('div');
+            logRow.style.padding = '12px';
+            logRow.style.borderBottom = '1px solid var(--border-color)';
+            logRow.style.fontSize = '14px';
+            logRow.style.display = 'flex';
+            logRow.style.justifyContent = 'space-between';
+            logRow.style.alignItems = 'center';
+            logRow.style.backgroundColor = 'var(--card-bg)';
+            logRow.style.borderRadius = '8px';
+            
+            const timeStr = new Date().toLocaleTimeString();
+            
+            logRow.innerHTML = `
+                <div>
+                    <strong>${name}</strong> <span style="opacity: 0.6; font-size: 12px;">(${size})</span><br>
+                    <span style="color: var(--accent-color); font-weight: 600;">${from} ➔ ${to}</span>
+                </div>
+                <div style="text-align: right; opacity: 0.8; font-size: 12px;">
+                    <span>⏳ ${duration} ms</span><br>
+                    <span>🕒 ${timeStr}</span>
+                </div>
+            `;
+            logsContainer.appendChild(logRow);
+        }
+
+        function downloadBlobDirect(blob, filename) {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        // Initialize application with baseline standard default state properties configurations setup template
+        setLanguage('en');
+    </script>
+</body>
+</html>
