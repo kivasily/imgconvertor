@@ -1,1 +1,1 @@
-U need to know: the lastest version of IMG Convertor is in Main. It's name is "index.html". Other versions, is here (in realeses folder).
+U need to know: the latest version of IMG Convertor is in Main. It's name is "index.html". Other versions, is here (in realeses folder).
