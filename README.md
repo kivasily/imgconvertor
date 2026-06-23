@@ -5,7 +5,7 @@
 <h3>Support</h3>
 <p>This project is one of my favorites! Therefore, support for this project will continue for approximately two years after the release (until June 2028). This support includes improving translations of current languages, adding new languages, bug fixes, possibly adding new features, and answering developer questions.</p>
 <h3>Languages</h3>
-<p>The current version of the site (1.2) supports: - English,<br> - Spanish,<br> - French,<br> - Russian,<br> - Japanese,<br> - Italian,<br> - German,<br> - Kazakh,<br> - Uzbek,<br> - Ukrainian,<br> - Belarusian,<br> - Indian. <br>
+<p>The current version of the site (1.2) supports:<br> - English,<br> - Spanish,<br> - French,<br> - Russian,<br> - Japanese,<br> - Italian,<br> - German,<br> - Kazakh,<br> - Uzbek,<br> - Ukrainian,<br> - Belarusian,<br> - Indian. <br>
 The <b>English, Spanish, French, and Russian</b> versions are fully developed.</p>
 <h3>Author</h3>
 <p>Author - @Kivasily. I build various simple AI-assisted websites that simplify people's lives and work routines. Each of my projects can be easily downloaded and executed locally from my official GitHub repositories. My websites collect zero information and are designed purely to save time and money. Discord: @Kivasily. Other my social media you can find on the site (in the index.html file).</p>
